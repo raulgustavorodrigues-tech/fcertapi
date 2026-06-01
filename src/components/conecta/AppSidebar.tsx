@@ -12,7 +12,14 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const items = [
+type NavItem = {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  exact?: boolean;
+};
+
+const items: NavItem[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/empresas", label: "Empresas", icon: Building2 },
   { to: "/bancos", label: "Bancos de Dados", icon: Database },
@@ -21,7 +28,7 @@ const items = [
   { to: "/conectividade", label: "Conectividade", icon: Wifi },
   { to: "/sincronizacao", label: "Sincronização", icon: RefreshCw },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
-] as const;
+];
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
