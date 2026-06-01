@@ -1,4 +1,5 @@
-import { createFileRoute, redirect, Outlet, Link, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { AppSidebar } from "@/components/conecta/AppSidebar";
 import { AppHeader } from "@/components/conecta/AppHeader";
@@ -10,18 +11,20 @@ export const Route = createFileRoute("/_app")({
 function AppLayout() {
   const { user, loading } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
 
-  if (loading) {
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate({ to: "/login", replace: true });
+    }
+  }, [loading, user, navigate]);
+
+  if (loading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-muted-foreground font-mono text-sm">Carregando…</div>
       </div>
     );
-  }
-
-  if (!user) {
-    // client-side gate
-    throw redirect({ to: "/login" });
   }
 
   return (
