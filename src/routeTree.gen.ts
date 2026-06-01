@@ -9,61 +9,247 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as AppTabelasRouteImport } from './routes/_app.tabelas'
+import { Route as AppSincronizacaoRouteImport } from './routes/_app.sincronizacao'
+import { Route as AppQueriesRouteImport } from './routes/_app.queries'
+import { Route as AppEmpresasRouteImport } from './routes/_app.empresas'
+import { Route as AppConfiguracoesRouteImport } from './routes/_app.configuracoes'
+import { Route as AppConectividadeRouteImport } from './routes/_app.conectividade'
+import { Route as AppBancosRouteImport } from './routes/_app.bancos'
 
-const IndexRoute = IndexRouteImport.update({
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTabelasRoute = AppTabelasRouteImport.update({
+  id: '/tabelas',
+  path: '/tabelas',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSincronizacaoRoute = AppSincronizacaoRouteImport.update({
+  id: '/sincronizacao',
+  path: '/sincronizacao',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppQueriesRoute = AppQueriesRouteImport.update({
+  id: '/queries',
+  path: '/queries',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEmpresasRoute = AppEmpresasRouteImport.update({
+  id: '/empresas',
+  path: '/empresas',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppConfiguracoesRoute = AppConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppConectividadeRoute = AppConectividadeRouteImport.update({
+  id: '/conectividade',
+  path: '/conectividade',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppBancosRoute = AppBancosRouteImport.update({
+  id: '/bancos',
+  path: '/bancos',
+  getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AppIndexRoute
+  '/login': typeof LoginRoute
+  '/bancos': typeof AppBancosRoute
+  '/conectividade': typeof AppConectividadeRoute
+  '/configuracoes': typeof AppConfiguracoesRoute
+  '/empresas': typeof AppEmpresasRoute
+  '/queries': typeof AppQueriesRoute
+  '/sincronizacao': typeof AppSincronizacaoRoute
+  '/tabelas': typeof AppTabelasRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/bancos': typeof AppBancosRoute
+  '/conectividade': typeof AppConectividadeRoute
+  '/configuracoes': typeof AppConfiguracoesRoute
+  '/empresas': typeof AppEmpresasRoute
+  '/queries': typeof AppQueriesRoute
+  '/sincronizacao': typeof AppSincronizacaoRoute
+  '/tabelas': typeof AppTabelasRoute
+  '/': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_app': typeof AppRouteWithChildren
+  '/login': typeof LoginRoute
+  '/_app/bancos': typeof AppBancosRoute
+  '/_app/conectividade': typeof AppConectividadeRoute
+  '/_app/configuracoes': typeof AppConfiguracoesRoute
+  '/_app/empresas': typeof AppEmpresasRoute
+  '/_app/queries': typeof AppQueriesRoute
+  '/_app/sincronizacao': typeof AppSincronizacaoRoute
+  '/_app/tabelas': typeof AppTabelasRoute
+  '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/bancos'
+    | '/conectividade'
+    | '/configuracoes'
+    | '/empresas'
+    | '/queries'
+    | '/sincronizacao'
+    | '/tabelas'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/login'
+    | '/bancos'
+    | '/conectividade'
+    | '/configuracoes'
+    | '/empresas'
+    | '/queries'
+    | '/sincronizacao'
+    | '/tabelas'
+    | '/'
+  id:
+    | '__root__'
+    | '/_app'
+    | '/login'
+    | '/_app/bancos'
+    | '/_app/conectividade'
+    | '/_app/configuracoes'
+    | '/_app/empresas'
+    | '/_app/queries'
+    | '/_app/sincronizacao'
+    | '/_app/tabelas'
+    | '/_app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/': {
+      id: '/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/tabelas': {
+      id: '/_app/tabelas'
+      path: '/tabelas'
+      fullPath: '/tabelas'
+      preLoaderRoute: typeof AppTabelasRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/sincronizacao': {
+      id: '/_app/sincronizacao'
+      path: '/sincronizacao'
+      fullPath: '/sincronizacao'
+      preLoaderRoute: typeof AppSincronizacaoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/queries': {
+      id: '/_app/queries'
+      path: '/queries'
+      fullPath: '/queries'
+      preLoaderRoute: typeof AppQueriesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/empresas': {
+      id: '/_app/empresas'
+      path: '/empresas'
+      fullPath: '/empresas'
+      preLoaderRoute: typeof AppEmpresasRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/configuracoes': {
+      id: '/_app/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof AppConfiguracoesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/conectividade': {
+      id: '/_app/conectividade'
+      path: '/conectividade'
+      fullPath: '/conectividade'
+      preLoaderRoute: typeof AppConectividadeRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/bancos': {
+      id: '/_app/bancos'
+      path: '/bancos'
+      fullPath: '/bancos'
+      preLoaderRoute: typeof AppBancosRouteImport
+      parentRoute: typeof AppRoute
     }
   }
 }
 
+interface AppRouteChildren {
+  AppBancosRoute: typeof AppBancosRoute
+  AppConectividadeRoute: typeof AppConectividadeRoute
+  AppConfiguracoesRoute: typeof AppConfiguracoesRoute
+  AppEmpresasRoute: typeof AppEmpresasRoute
+  AppQueriesRoute: typeof AppQueriesRoute
+  AppSincronizacaoRoute: typeof AppSincronizacaoRoute
+  AppTabelasRoute: typeof AppTabelasRoute
+  AppIndexRoute: typeof AppIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppBancosRoute: AppBancosRoute,
+  AppConectividadeRoute: AppConectividadeRoute,
+  AppConfiguracoesRoute: AppConfiguracoesRoute,
+  AppEmpresasRoute: AppEmpresasRoute,
+  AppQueriesRoute: AppQueriesRoute,
+  AppSincronizacaoRoute: AppSincronizacaoRoute,
+  AppTabelasRoute: AppTabelasRoute,
+  AppIndexRoute: AppIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
