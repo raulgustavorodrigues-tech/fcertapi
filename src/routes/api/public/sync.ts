@@ -2,90 +2,127 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-const syncPayloadSchema = z.object({
-  agent_uid: z.string().min(1),
-  agent_version: z.string().optional(),
-  timestamp: z.string().optional(),
-  database_name: z.string().optional(),
-  sync_type: z.string().optional(),
-  tables: z
-    .array(
-      z.object({
-        table_name: z.string(),
-        record_count: z.number().optional(),
-        checksum: z.string().optional(),
-        records: z.array(z.record(z.any())).optional(),
-      }),
-    )
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
+const tableSchema = z.object({
+  table_name: z
+    .string({ required_error: "table_name é obrigatório" })
+    .min(1, "table_name não pode ser vazio")
+    .max(128, "table_name muito longo (máx 128)")
+    .regex(/^[A-Za-z_][A-Za-z0-9_]*$/, "table_name deve ser um identificador SQL válido"),
+  record_count: z
+    .number({ invalid_type_error: "record_count deve ser numérico" })
+    .int("record_count deve ser inteiro")
+    .min(0, "record_count não pode ser negativo")
+    .max(1_000_000, "record_count excede o limite (1.000.000)")
+    .optional(),
+  checksum: z.string().max(256).optional(),
+  records: z
+    .array(z.record(z.any()))
+    .max(50_000, "records excede o limite (50.000 por tabela)")
     .optional(),
 });
+
+const syncPayloadSchema = z
+  .object({
+    agent_uid: z
+      .string({ required_error: "agent_uid é obrigatório" })
+      .min(3, "agent_uid muito curto (mín 3)")
+      .max(128, "agent_uid muito longo (máx 128)")
+      .regex(/^[A-Za-z0-9_\-:.]+$/, "agent_uid contém caracteres inválidos"),
+    agent_version: z.string().max(64).optional(),
+    timestamp: z
+      .string()
+      .datetime({ offset: true, message: "timestamp deve estar em formato ISO 8601" })
+      .optional(),
+    database_name: z.string().max(255).optional(),
+    sync_type: z.enum(["full", "incremental", "delta", "test"]).optional(),
+    tables: z
+      .array(tableSchema)
+      .min(1, "tables deve conter ao menos 1 tabela")
+      .max(500, "tables excede o limite (500)"),
+  })
+  .strict();
+
+function err(status: number, code: string, message: string, details?: unknown) {
+  return Response.json(
+    { success: false, error: { code, message, details } },
+    { status, headers: CORS },
+  );
+}
 
 export const Route = createFileRoute("/api/public/sync")({
   server: {
     handlers: {
-      OPTIONS: async () => {
-        return new Response(null, {
-          status: 204,
-          headers: {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization",
-          },
-        });
-      },
+      OPTIONS: async () => new Response(null, { status: 204, headers: CORS }),
       POST: async ({ request }) => {
         const authHeader = request.headers.get("authorization") ?? "";
-        const token = authHeader.replace(/^Bearer\s+/i, "");
+        const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+        if (!token) return err(401, "MISSING_TOKEN", "Cabeçalho Authorization Bearer ausente");
 
-        if (!token) {
-          return new Response("Unauthorized: missing token", {
-            status: 401,
-            headers: {
-              "Access-Control-Allow-Origin": "*",
-              "Access-Control-Allow-Methods": "POST, OPTIONS",
-              "Access-Control-Allow-Headers": "Content-Type, Authorization",
-            },
-          });
+        const contentType = request.headers.get("content-type") ?? "";
+        if (!contentType.toLowerCase().includes("application/json")) {
+          return err(415, "UNSUPPORTED_MEDIA_TYPE", "Content-Type deve ser application/json");
         }
 
-        let payload: z.infer<typeof syncPayloadSchema>;
+        const raw = await request.text();
+        if (!raw || raw.trim().length === 0) {
+          return err(400, "EMPTY_BODY", "Corpo da requisição vazio");
+        }
+        if (raw.length > 10 * 1024 * 1024) {
+          return err(413, "PAYLOAD_TOO_LARGE", "Payload excede 10MB");
+        }
+
+        let json: unknown;
         try {
-          payload = syncPayloadSchema.parse(await request.json());
+          json = JSON.parse(raw);
         } catch (e: any) {
-          return new Response(`Invalid payload: ${e.message}`, {
-            status: 400,
-            headers: {
-              "Access-Control-Allow-Origin": "*",
-              "Access-Control-Allow-Methods": "POST, OPTIONS",
-              "Access-Control-Allow-Headers": "Content-Type, Authorization",
-            },
-          });
+          return err(400, "INVALID_JSON", `JSON malformado: ${e.message}`);
         }
 
-        const { data: db } = await supabaseAdmin
+        const parsed = syncPayloadSchema.safeParse(json);
+        if (!parsed.success) {
+          const fieldErrors = parsed.error.errors.map((e) => ({
+            path: e.path.join("."),
+            message: e.message,
+          }));
+          return err(422, "VALIDATION_ERROR", "Campos inválidos no payload", fieldErrors);
+        }
+        const payload = parsed.data;
+
+        // valida coerência record_count vs records.length
+        for (const t of payload.tables) {
+          if (
+            t.records &&
+            typeof t.record_count === "number" &&
+            t.records.length !== t.record_count
+          ) {
+            return err(
+              422,
+              "RECORD_COUNT_MISMATCH",
+              `Tabela "${t.table_name}": record_count (${t.record_count}) não corresponde a records.length (${t.records.length})`,
+            );
+          }
+        }
+
+        const { data: db, error: dbErr } = await supabaseAdmin
           .from("databases")
           .select("id, agent_token")
           .eq("agent_uid", payload.agent_uid)
-          .single();
+          .maybeSingle();
 
-        if (!db || db.agent_token !== token) {
-          return new Response("Unauthorized: invalid agent", {
-            status: 401,
-            headers: {
-              "Access-Control-Allow-Origin": "*",
-              "Access-Control-Allow-Methods": "POST, OPTIONS",
-              "Access-Control-Allow-Headers": "Content-Type, Authorization",
-            },
-          });
-        }
+        if (dbErr) return err(500, "DB_ERROR", "Erro ao consultar banco");
+        if (!db) return err(404, "AGENT_NOT_FOUND", `agent_uid "${payload.agent_uid}" não está registrado`);
+        if (!db.agent_token) return err(401, "TOKEN_NOT_CONFIGURED", "Agente não possui token configurado");
+        if (db.agent_token !== token) return err(401, "INVALID_TOKEN", "Token inválido ou revogado");
 
-        const totalRecords =
-          payload.tables?.reduce(
-            (sum, t) => sum + (t.record_count ?? 0),
-            0,
-          ) ?? 0;
-
+        const totalRecords = payload.tables.reduce((s, t) => s + (t.record_count ?? t.records?.length ?? 0), 0);
         const startedAt = payload.timestamp ?? new Date().toISOString();
+
         await supabaseAdmin.from("sync_logs").insert({
           database_id: db.id,
           started_at: startedAt,
@@ -129,14 +166,12 @@ export const Route = createFileRoute("/api/public/sync")({
         }
 
         return Response.json(
-          { success: true, records_received: totalRecords },
           {
-            headers: {
-              "Access-Control-Allow-Origin": "*",
-              "Access-Control-Allow-Methods": "POST, OPTIONS",
-              "Access-Control-Allow-Headers": "Content-Type, Authorization",
-            },
+            success: true,
+            records_received: totalRecords,
+            tables_received: payload.tables.length,
           },
+          { headers: CORS },
         );
       },
     },
