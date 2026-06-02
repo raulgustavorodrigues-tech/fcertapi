@@ -335,6 +335,9 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
     } catch (e: any) {
       toast.error(`Falha ao baixar agente: ${e.message ?? e}`);
     }
+  }
+
+
 
   const agent = Array.isArray(db.agents) ? db.agents[0] : db.agents;
   const connMode = (() => {
