@@ -395,6 +395,9 @@ function DatabaseDialog({
     firebird_version: initial?.firebird_version ?? "2.5",
     agent_token: initial?.agent_token ?? "",
     agent_endpoint: initial?.agent_endpoint ?? "",
+    agent_uid: initial?.agent_uid ?? "",
+    sync_interval: initial?.sync_interval ?? 900,
+    sync_tables: initial?.sync_tables ?? "ALL",
     notes: initial?.notes ?? "",
   });
   const [showPwd, setShowPwd] = useState(false);
