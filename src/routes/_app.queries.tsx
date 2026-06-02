@@ -388,31 +388,35 @@ function RunnerDialog({ query, onClose, onRan }: any) {
   const finalSQL = useMemo(() => applyParams(query.sql_content, params), [query.sql_content, params]);
 
   async function exec() {
+    if (!query.database_id) { toast.error("Vincule um banco antes de executar"); return; }
     setRunning(true);
     setResult(null);
-    const start = Date.now();
-    setTimeout(async () => {
-      const ok = Math.random() > 0.15;
-      const duration = Date.now() - start + Math.floor(Math.random() * 600);
-      if (ok) {
-        const rowCount = Math.floor(Math.random() * 50) + 1;
-        const cols = ["ID", "DESCRICAO", "VALOR", "DATA"];
-        const rows = Array.from({ length: Math.min(rowCount, 10) }).map((_, i) => ({
-          ID: 1000 + i,
-          DESCRICAO: `Registro ${i + 1}`,
-          VALOR: (Math.random() * 1000).toFixed(2),
-          DATA: new Date(Date.now() - i * 86400000).toISOString().split("T")[0],
-        }));
-        setResult({ ok: true, cols, rows, total: rowCount, duration });
+    try {
+      const { enqueueCommand, awaitCommandResult } = await import("@/lib/commands");
+      const { command_id } = await enqueueCommand(query.database_id, "run_query", {
+        sql: finalSQL,
+        max_rows: 100,
+        query_name: query.name,
+      });
+      const row = await awaitCommandResult(command_id, { timeoutMs: 60_000, intervalMs: 1500 });
+      if (row.status === "success" && row.result) {
+        const r = row.result;
+        const cols = r.columns ?? Object.keys(r.rows?.[0] ?? {});
+        const rows = r.rows ?? [];
+        setResult({ ok: true, cols, rows, total: r.total ?? rows.length, duration: row.duration_ms ?? 0 });
         await supabase.from("saved_queries").update({ last_run_at: new Date().toISOString() }).eq("id", query.id);
         onRan();
-        toast.success(`${rowCount} registros em ${duration}ms`);
+        toast.success(`${rows.length} registros em ${row.duration_ms ?? 0}ms`);
       } else {
-        setResult({ ok: false, error: "ISC ERROR CODE:335544569 - Dynamic SQL Error / Token unknown" });
+        setResult({ ok: false, error: row.error_message ?? "Erro desconhecido" });
         toast.error("Erro de execução");
       }
+    } catch (e: any) {
+      setResult({ ok: false, error: e.message ?? "Timeout aguardando agente" });
+      toast.error("Agente não respondeu no tempo esperado");
+    } finally {
       setRunning(false);
-    }, 900);
+    }
   }
 
   function exportCSV() {
