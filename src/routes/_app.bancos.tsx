@@ -45,7 +45,7 @@ function BancosPage() {
   const { data: databases = [], isLoading } = useQuery({
     queryKey: ["databases", company],
     queryFn: async () => {
-      let q = supabase.from("databases").select("*, companies(name)").order("created_at", { ascending: false });
+      let q = supabase.from("databases").select("*, companies(name), agents(status, last_heartbeat_at, tunnel_url, pending_commands)").order("created_at", { ascending: false });
       if (company && company !== "all") q = q.eq("company_id", company);
       const { data, error } = await q;
       if (error) throw error;
