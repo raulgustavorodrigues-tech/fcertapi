@@ -65,29 +65,7 @@ function BancosPage() {
     },
   });
 
-  async function testConnection(db: any) {
-    const start = Date.now();
-    await supabase.from("connectivity_logs").insert({
-      database_id: db.id,
-      latency_ms: 0,
-      result: "pending",
-    });
-    toast.info(`Testando ${db.name}…`);
-    setTimeout(async () => {
-      const ok = Math.random() > 0.3;
-      const latency = Date.now() - start + Math.floor(Math.random() * 200);
-      await supabase.from("databases").update({ status: ok ? "connected" : "disconnected" }).eq("id", db.id);
-      await supabase.from("connectivity_logs").insert({
-        database_id: db.id,
-        latency_ms: latency,
-        result: ok ? "success" : "error",
-        step_failed: ok ? null : "firebird",
-        error_detail: ok ? null : "Não foi possível abrir o arquivo .FDB",
-      });
-      qc.invalidateQueries({ queryKey: ["databases"] });
-      ok ? toast.success(`${db.name}: conexão OK (${latency}ms)`) : toast.error(`${db.name}: falha na conexão`);
-    }, 800);
-  }
+  async function syncNowProxy() {} // placeholder kept to preserve diff context
 
   async function syncNow(db: any) {
     toast.info(`Iniciando sync em ${db.name}…`);
