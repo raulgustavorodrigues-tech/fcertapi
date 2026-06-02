@@ -14,9 +14,14 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Database as DatabaseIcon, Eye, EyeOff, Zap, RefreshCw, Pencil, Trash2 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Progress } from "@/components/ui/progress";
+import { Plus, Database as DatabaseIcon, Eye, EyeOff, Zap, RefreshCw, Pencil, Trash2, Copy, Check, X, Loader2, Activity } from "lucide-react";
 import { toast } from "sonner";
 import { formatDateTime, formatRelative } from "@/lib/format";
+
+type StepStatus = "pending" | "running" | "success" | "error";
+type TestStep = { key: string; label: string; status: StepStatus; detail?: string; ms?: number };
 
 export const Route = createFileRoute("/_app/bancos")({
   validateSearch: (s: Record<string, unknown>) => ({ company: (s.company as string) ?? "all" }),
