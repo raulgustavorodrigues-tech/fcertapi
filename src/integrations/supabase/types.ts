@@ -145,6 +145,7 @@ export type Database = {
         Row: {
           agent_endpoint: string | null
           agent_token: string | null
+          agent_uid: string | null
           charset: string | null
           company_id: string
           created_at: string
@@ -158,11 +159,14 @@ export type Database = {
           password_encrypted: string | null
           port: number | null
           status: string | null
+          sync_interval: number | null
+          sync_tables: string | null
           username: string | null
         }
         Insert: {
           agent_endpoint?: string | null
           agent_token?: string | null
+          agent_uid?: string | null
           charset?: string | null
           company_id: string
           created_at?: string
@@ -176,11 +180,14 @@ export type Database = {
           password_encrypted?: string | null
           port?: number | null
           status?: string | null
+          sync_interval?: number | null
+          sync_tables?: string | null
           username?: string | null
         }
         Update: {
           agent_endpoint?: string | null
           agent_token?: string | null
+          agent_uid?: string | null
           charset?: string | null
           company_id?: string
           created_at?: string
@@ -194,6 +201,8 @@ export type Database = {
           password_encrypted?: string | null
           port?: number | null
           status?: string | null
+          sync_interval?: number | null
+          sync_tables?: string | null
           username?: string | null
         }
         Relationships: [

@@ -1,0 +1,3 @@
+ALTER TABLE public.databases ADD COLUMN IF NOT EXISTS agent_uid TEXT;
+ALTER TABLE public.databases ADD COLUMN IF NOT EXISTS sync_interval INTEGER DEFAULT 900;
+ALTER TABLE public.databases ADD COLUMN IF NOT EXISTS sync_tables TEXT DEFAULT 'ALL';
