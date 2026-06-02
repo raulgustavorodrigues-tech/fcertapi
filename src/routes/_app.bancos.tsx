@@ -275,30 +275,35 @@ function DatabaseCard({
   }
 
   async function copyConfig() {
-    const config = {
-      agent: "LocalBridge",
-      version: "1.0",
-      database_id: db.id,
-      name: db.name,
-      connection: {
-        host: db.host ?? "",
-        port: db.port ?? 3050,
-        filepath: db.filepath ?? "",
-        username: db.username ?? "SYSDBA",
-        password: db.password_encrypted ?? "",
-        charset: db.charset ?? "WIN1252",
-        firebird_version: db.firebird_version ?? "2.5",
-      },
-      agent_endpoint: db.agent_endpoint ?? "",
-      agent_token: db.agent_token ?? "",
-      api: {
-        base_url: import.meta.env.VITE_SUPABASE_URL,
-        anon_key: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-      },
-    };
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const env = `# Configuração do agente LocalBridge para FireSync Hub
+# Endpoint do FireSync Hub (URL pública do seu app)
+REMOTE_ENDPOINT=${origin}/api/public/sync
+
+# Token de autenticação
+API_TOKEN=${db.agent_token ?? ""}
+
+# Identificador único deste agente
+AGENT_UID=${db.agent_uid ?? db.id}
+AGENT_ALIAS=${db.name}
+
+# Banco Firebird local
+DB_TYPE=firebird
+DB_HOST=${db.host ?? "localhost"}
+DB_PORT=${db.port ?? 3050}
+DB_PATH=${db.filepath ?? ""}
+DB_USER=${db.username ?? "SYSDBA"}
+DB_PASS=${db.password_encrypted ?? ""}
+DB_CHARSET=${db.charset ?? "WIN1252"}
+
+# Intervalo de sincronização (segundos)
+SYNC_INTERVAL=${db.sync_interval ?? 900}
+
+# Tabelas a sincronizar (separadas por vírgula, ou ALL para todas)
+SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
     try {
-      await navigator.clipboard.writeText(JSON.stringify(config, null, 2));
-      toast.success("Configuração copiada para a área de transferência");
+      await navigator.clipboard.writeText(env);
+      toast.success("Arquivo .env copiado para a área de transferência");
     } catch {
       toast.error("Falha ao copiar configuração");
     }
