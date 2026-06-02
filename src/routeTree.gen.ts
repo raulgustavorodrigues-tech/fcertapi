@@ -21,6 +21,7 @@ import { Route as AppConectividadeRouteImport } from './routes/_app.conectividad
 import { Route as AppBancosRouteImport } from './routes/_app.bancos'
 import { Route as ApiPublicSyncRouteImport } from './routes/api/public/sync'
 import { Route as ApiPublicRegisterRouteImport } from './routes/api/public/register'
+import { Route as ApiPublicLogsRouteImport } from './routes/api/public/logs'
 import { Route as ApiPublicHeartbeatRouteImport } from './routes/api/public/heartbeat'
 import { Route as ApiPublicCommand_resultRouteImport } from './routes/api/public/command_result'
 
@@ -83,6 +84,11 @@ const ApiPublicRegisterRoute = ApiPublicRegisterRouteImport.update({
   path: '/api/public/register',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicLogsRoute = ApiPublicLogsRouteImport.update({
+  id: '/api/public/logs',
+  path: '/api/public/logs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHeartbeatRoute = ApiPublicHeartbeatRouteImport.update({
   id: '/api/public/heartbeat',
   path: '/api/public/heartbeat',
@@ -106,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/tabelas': typeof AppTabelasRoute
   '/api/public/command_result': typeof ApiPublicCommand_resultRoute
   '/api/public/heartbeat': typeof ApiPublicHeartbeatRoute
+  '/api/public/logs': typeof ApiPublicLogsRoute
   '/api/public/register': typeof ApiPublicRegisterRoute
   '/api/public/sync': typeof ApiPublicSyncRoute
 }
@@ -121,6 +128,7 @@ export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/api/public/command_result': typeof ApiPublicCommand_resultRoute
   '/api/public/heartbeat': typeof ApiPublicHeartbeatRoute
+  '/api/public/logs': typeof ApiPublicLogsRoute
   '/api/public/register': typeof ApiPublicRegisterRoute
   '/api/public/sync': typeof ApiPublicSyncRoute
 }
@@ -138,6 +146,7 @@ export interface FileRoutesById {
   '/_app/': typeof AppIndexRoute
   '/api/public/command_result': typeof ApiPublicCommand_resultRoute
   '/api/public/heartbeat': typeof ApiPublicHeartbeatRoute
+  '/api/public/logs': typeof ApiPublicLogsRoute
   '/api/public/register': typeof ApiPublicRegisterRoute
   '/api/public/sync': typeof ApiPublicSyncRoute
 }
@@ -155,6 +164,7 @@ export interface FileRouteTypes {
     | '/tabelas'
     | '/api/public/command_result'
     | '/api/public/heartbeat'
+    | '/api/public/logs'
     | '/api/public/register'
     | '/api/public/sync'
   fileRoutesByTo: FileRoutesByTo
@@ -170,6 +180,7 @@ export interface FileRouteTypes {
     | '/'
     | '/api/public/command_result'
     | '/api/public/heartbeat'
+    | '/api/public/logs'
     | '/api/public/register'
     | '/api/public/sync'
   id:
@@ -186,6 +197,7 @@ export interface FileRouteTypes {
     | '/_app/'
     | '/api/public/command_result'
     | '/api/public/heartbeat'
+    | '/api/public/logs'
     | '/api/public/register'
     | '/api/public/sync'
   fileRoutesById: FileRoutesById
@@ -195,6 +207,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ApiPublicCommand_resultRoute: typeof ApiPublicCommand_resultRoute
   ApiPublicHeartbeatRoute: typeof ApiPublicHeartbeatRoute
+  ApiPublicLogsRoute: typeof ApiPublicLogsRoute
   ApiPublicRegisterRoute: typeof ApiPublicRegisterRoute
   ApiPublicSyncRoute: typeof ApiPublicSyncRoute
 }
@@ -285,6 +298,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicRegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/logs': {
+      id: '/api/public/logs'
+      path: '/api/public/logs'
+      fullPath: '/api/public/logs'
+      preLoaderRoute: typeof ApiPublicLogsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/heartbeat': {
       id: '/api/public/heartbeat'
       path: '/api/public/heartbeat'
@@ -331,6 +351,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ApiPublicCommand_resultRoute: ApiPublicCommand_resultRoute,
   ApiPublicHeartbeatRoute: ApiPublicHeartbeatRoute,
+  ApiPublicLogsRoute: ApiPublicLogsRoute,
   ApiPublicRegisterRoute: ApiPublicRegisterRoute,
   ApiPublicSyncRoute: ApiPublicSyncRoute,
 }
