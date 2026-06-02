@@ -65,13 +65,13 @@ export const Route = createFileRoute("/api/public/heartbeat")({
           .eq("agent_uid", data.agent_uid)
           .maybeSingle();
 
-        const update: Record<string, any> = {
+        const update = {
           last_heartbeat_at: now,
           status: "online",
           agent_version: data.agent_version ?? null,
           tunnel_url: data.tunnel_url ?? null,
           push_only: !data.tunnel_url,
-          system_info: data.system_info ?? null,
+          system_info: (data.system_info ?? null) as any,
         };
 
         let pending: any[] = [];
