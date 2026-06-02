@@ -132,37 +132,16 @@ function BancosPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {databases.map((db: any) => (
-            <Card key={db.id} className="p-5 bg-card border-border hover:border-primary/40 transition-colors">
-              <div className="flex items-start justify-between mb-3">
-                <div className="min-w-0">
-                  <div className="font-mono text-sm font-semibold truncate">{db.name}</div>
-                  <Badge variant="info" className="mt-1.5">{db.companies?.name ?? "—"}</Badge>
-                </div>
-                <StatusBadge status={db.status} />
-              </div>
-              <dl className="text-xs space-y-1.5 text-muted-foreground font-mono mb-4">
-                <Row label="Host">{db.host ?? "—"}:{db.port ?? 3050}</Row>
-                <Row label="Arquivo">{db.filepath ?? "—"}</Row>
-                <Row label="Firebird">{db.firebird_version} · {db.charset}</Row>
-                <Row label="Última sync">{formatRelative(db.last_sync_at)}</Row>
-              </dl>
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="outline" onClick={() => testConnection(db)}>
-                  <Zap className="h-3.5 w-3.5 mr-1" /> Testar
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => syncNow(db)}>
-                  <RefreshCw className="h-3.5 w-3.5 mr-1" /> Sync
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => { setEditing(db); setOpen(true); }}>
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => {
-                  if (confirm("Remover este banco? Esta ação não pode ser desfeita.")) remove.mutate(db.id);
-                }}>
-                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                </Button>
-              </div>
-            </Card>
+            <DatabaseCard
+              key={db.id}
+              db={db}
+              onSync={() => syncNow(db)}
+              onEdit={() => { setEditing(db); setOpen(true); }}
+              onDelete={() => {
+                if (confirm("Remover este banco? Esta ação não pode ser desfeita.")) remove.mutate(db.id);
+              }}
+              onRefresh={() => qc.invalidateQueries({ queryKey: ["databases"] })}
+            />
           ))}
         </div>
       )}
