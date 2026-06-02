@@ -15,7 +15,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, Database as DatabaseIcon, Eye, EyeOff, Zap, RefreshCw, Pencil, Trash2, Copy, Check, X, Loader2, Activity } from "lucide-react";
+import { Plus, Database as DatabaseIcon, Eye, EyeOff, Zap, RefreshCw, Pencil, Trash2, Copy, Check, X, Loader2, Activity, Download } from "lucide-react";
 import { toast } from "sonner";
 import { formatDateTime, formatRelative } from "@/lib/format";
 
@@ -312,6 +312,33 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
     }
   }
 
+  async function downloadAgent() {
+    if (!db.agent_token) {
+      toast.error("Este banco não tem token. Edite o banco e gere/salve um token primeiro.");
+      return;
+    }
+    try {
+      toast.info("Gerando pacote do agente…");
+      const url = `/api/public/agent-bundle?database_id=${encodeURIComponent(db.id)}&token=${encodeURIComponent(db.agent_token)}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(await res.text());
+      const blob = await res.blob();
+      const cd = res.headers.get("content-disposition") ?? "";
+      const m = /filename="?([^"]+)"?/i.exec(cd);
+      const filename = m?.[1] ?? `firesync-agent-${db.id}.zip`;
+      const a = document.createElement("a");
+      const objUrl = URL.createObjectURL(blob);
+      a.href = objUrl; a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(objUrl);
+      toast.success("Pacote do agente baixado");
+    } catch (e: any) {
+      toast.error(`Falha ao baixar agente: ${e.message ?? e}`);
+    }
+  }
+
+
+
   const agent = Array.isArray(db.agents) ? db.agents[0] : db.agents;
   const connMode = (() => {
     if (!agent?.last_heartbeat_at) return { label: "Offline", variant: "destructive" as const };
@@ -387,8 +414,11 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
         <Button size="sm" variant="outline" onClick={onSync}>
           <RefreshCw className="h-3.5 w-3.5 mr-1" /> Sync
         </Button>
-        <Button size="sm" variant="outline" onClick={copyConfig} title="Copiar JSON de configuração do agente LocalBridge">
-          <Copy className="h-3.5 w-3.5 mr-1" /> Copiar config
+        <Button size="sm" variant="outline" onClick={copyConfig} title="Copiar .env do agente LocalBridge">
+          <Copy className="h-3.5 w-3.5 mr-1" /> Copiar .env
+        </Button>
+        <Button size="sm" onClick={downloadAgent} title="Baixar pacote ZIP do agente já configurado">
+          <Download className="h-3.5 w-3.5 mr-1" /> Baixar agente
         </Button>
         <Button size="sm" variant="outline" onClick={onEdit}>
           <Pencil className="h-3.5 w-3.5" />

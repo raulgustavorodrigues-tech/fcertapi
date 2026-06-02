@@ -24,6 +24,7 @@ import { Route as ApiPublicRegisterRouteImport } from './routes/api/public/regis
 import { Route as ApiPublicLogsRouteImport } from './routes/api/public/logs'
 import { Route as ApiPublicHeartbeatRouteImport } from './routes/api/public/heartbeat'
 import { Route as ApiPublicCommand_resultRouteImport } from './routes/api/public/command_result'
+import { Route as ApiPublicAgentBundleRouteImport } from './routes/api/public/agent-bundle'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -99,6 +100,11 @@ const ApiPublicCommand_resultRoute = ApiPublicCommand_resultRouteImport.update({
   path: '/api/public/command_result',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAgentBundleRoute = ApiPublicAgentBundleRouteImport.update({
+  id: '/api/public/agent-bundle',
+  path: '/api/public/agent-bundle',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -110,6 +116,7 @@ export interface FileRoutesByFullPath {
   '/queries': typeof AppQueriesRoute
   '/sincronizacao': typeof AppSincronizacaoRoute
   '/tabelas': typeof AppTabelasRoute
+  '/api/public/agent-bundle': typeof ApiPublicAgentBundleRoute
   '/api/public/command_result': typeof ApiPublicCommand_resultRoute
   '/api/public/heartbeat': typeof ApiPublicHeartbeatRoute
   '/api/public/logs': typeof ApiPublicLogsRoute
@@ -126,6 +133,7 @@ export interface FileRoutesByTo {
   '/sincronizacao': typeof AppSincronizacaoRoute
   '/tabelas': typeof AppTabelasRoute
   '/': typeof AppIndexRoute
+  '/api/public/agent-bundle': typeof ApiPublicAgentBundleRoute
   '/api/public/command_result': typeof ApiPublicCommand_resultRoute
   '/api/public/heartbeat': typeof ApiPublicHeartbeatRoute
   '/api/public/logs': typeof ApiPublicLogsRoute
@@ -144,6 +152,7 @@ export interface FileRoutesById {
   '/_app/sincronizacao': typeof AppSincronizacaoRoute
   '/_app/tabelas': typeof AppTabelasRoute
   '/_app/': typeof AppIndexRoute
+  '/api/public/agent-bundle': typeof ApiPublicAgentBundleRoute
   '/api/public/command_result': typeof ApiPublicCommand_resultRoute
   '/api/public/heartbeat': typeof ApiPublicHeartbeatRoute
   '/api/public/logs': typeof ApiPublicLogsRoute
@@ -162,6 +171,7 @@ export interface FileRouteTypes {
     | '/queries'
     | '/sincronizacao'
     | '/tabelas'
+    | '/api/public/agent-bundle'
     | '/api/public/command_result'
     | '/api/public/heartbeat'
     | '/api/public/logs'
@@ -178,6 +188,7 @@ export interface FileRouteTypes {
     | '/sincronizacao'
     | '/tabelas'
     | '/'
+    | '/api/public/agent-bundle'
     | '/api/public/command_result'
     | '/api/public/heartbeat'
     | '/api/public/logs'
@@ -195,6 +206,7 @@ export interface FileRouteTypes {
     | '/_app/sincronizacao'
     | '/_app/tabelas'
     | '/_app/'
+    | '/api/public/agent-bundle'
     | '/api/public/command_result'
     | '/api/public/heartbeat'
     | '/api/public/logs'
@@ -205,6 +217,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  ApiPublicAgentBundleRoute: typeof ApiPublicAgentBundleRoute
   ApiPublicCommand_resultRoute: typeof ApiPublicCommand_resultRoute
   ApiPublicHeartbeatRoute: typeof ApiPublicHeartbeatRoute
   ApiPublicLogsRoute: typeof ApiPublicLogsRoute
@@ -319,6 +332,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCommand_resultRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/agent-bundle': {
+      id: '/api/public/agent-bundle'
+      path: '/api/public/agent-bundle'
+      fullPath: '/api/public/agent-bundle'
+      preLoaderRoute: typeof ApiPublicAgentBundleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -349,6 +369,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  ApiPublicAgentBundleRoute: ApiPublicAgentBundleRoute,
   ApiPublicCommand_resultRoute: ApiPublicCommand_resultRoute,
   ApiPublicHeartbeatRoute: ApiPublicHeartbeatRoute,
   ApiPublicLogsRoute: ApiPublicLogsRoute,
