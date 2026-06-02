@@ -19,6 +19,7 @@ import { Route as AppEmpresasRouteImport } from './routes/_app.empresas'
 import { Route as AppConfiguracoesRouteImport } from './routes/_app.configuracoes'
 import { Route as AppConectividadeRouteImport } from './routes/_app.conectividade'
 import { Route as AppBancosRouteImport } from './routes/_app.bancos'
+import { Route as ApiPublicSyncRouteImport } from './routes/api/public/sync'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -69,6 +70,11 @@ const AppBancosRoute = AppBancosRouteImport.update({
   path: '/bancos',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiPublicSyncRoute = ApiPublicSyncRouteImport.update({
+  id: '/api/public/sync',
+  path: '/api/public/sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -80,6 +86,7 @@ export interface FileRoutesByFullPath {
   '/queries': typeof AppQueriesRoute
   '/sincronizacao': typeof AppSincronizacaoRoute
   '/tabelas': typeof AppTabelasRoute
+  '/api/public/sync': typeof ApiPublicSyncRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -91,6 +98,7 @@ export interface FileRoutesByTo {
   '/sincronizacao': typeof AppSincronizacaoRoute
   '/tabelas': typeof AppTabelasRoute
   '/': typeof AppIndexRoute
+  '/api/public/sync': typeof ApiPublicSyncRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -104,6 +112,7 @@ export interface FileRoutesById {
   '/_app/sincronizacao': typeof AppSincronizacaoRoute
   '/_app/tabelas': typeof AppTabelasRoute
   '/_app/': typeof AppIndexRoute
+  '/api/public/sync': typeof ApiPublicSyncRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/queries'
     | '/sincronizacao'
     | '/tabelas'
+    | '/api/public/sync'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -128,6 +138,7 @@ export interface FileRouteTypes {
     | '/sincronizacao'
     | '/tabelas'
     | '/'
+    | '/api/public/sync'
   id:
     | '__root__'
     | '/_app'
@@ -140,11 +151,13 @@ export interface FileRouteTypes {
     | '/_app/sincronizacao'
     | '/_app/tabelas'
     | '/_app/'
+    | '/api/public/sync'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  ApiPublicSyncRoute: typeof ApiPublicSyncRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -219,6 +232,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppBancosRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/public/sync': {
+      id: '/api/public/sync'
+      path: '/api/public/sync'
+      fullPath: '/api/public/sync'
+      preLoaderRoute: typeof ApiPublicSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -249,7 +269,18 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  ApiPublicSyncRoute: ApiPublicSyncRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
