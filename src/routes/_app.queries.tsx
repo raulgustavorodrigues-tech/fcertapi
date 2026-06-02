@@ -286,7 +286,15 @@ function QueryDialog({ initial, onClose, onSaved }: any) {
   }
 
   return (
-    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+    <DialogContent
+      className="max-w-3xl max-h-[90vh] overflow-y-auto"
+      onKeyDown={(e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+          e.preventDefault();
+          if (!saving) save();
+        }
+      }}
+    >
       <DialogHeader>
         <DialogTitle>{initial ? "Editar query" : "Nova query"}</DialogTitle>
       </DialogHeader>
@@ -314,7 +322,20 @@ function QueryDialog({ initial, onClose, onSaved }: any) {
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <Label>SQL *</Label>
-            <span className="text-[10px] text-muted-foreground font-mono">{form.sql_content.length} chars</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground font-mono">{form.sql_content.length} chars</span>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setForm((f: any) => ({ ...f, sql_content: formatSQL(f.sql_content) }));
+                  toast.success("SQL formatado");
+                }}
+              >
+                <Wand2 className="h-3.5 w-3.5 mr-1.5" /> Formatar SQL
+              </Button>
+            </div>
           </div>
           <div className="relative rounded border border-border bg-background/60">
             <pre
@@ -330,7 +351,11 @@ function QueryDialog({ initial, onClose, onSaved }: any) {
               className="relative bg-transparent text-transparent caret-primary font-mono text-xs leading-relaxed resize-none border-0 focus-visible:ring-0"
             />
           </div>
+          <p className="text-[10px] text-muted-foreground font-mono">
+            Atalho: <kbd className="px-1 py-0.5 rounded bg-muted">Ctrl+S</kbd> salva · use <code>:nome</code> para parâmetros
+          </p>
         </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>Tags (separadas por vírgula)</Label>
