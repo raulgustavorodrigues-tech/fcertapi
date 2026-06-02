@@ -14,9 +14,77 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Code2, Star, Play, Pencil, Trash2, Search, Copy } from "lucide-react";
+import { Plus, Code2, Star, Play, Pencil, Trash2, Search, Copy, Wand2, FileJson, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { formatRelative } from "@/lib/format";
+
+// ---------- SQL formatter (simple, dependency-free) ----------
+function formatSQL(sql: string): string {
+  const breakBefore = [
+    "SELECT", "FROM", "WHERE", "LEFT JOIN", "RIGHT JOIN", "INNER JOIN",
+    "OUTER JOIN", "JOIN", "ORDER BY", "GROUP BY", "HAVING", "LIMIT",
+    "OFFSET", "UNION ALL", "UNION", "INSERT INTO", "VALUES", "UPDATE",
+    "SET", "DELETE FROM", "RETURNING",
+  ];
+  let s = sql.replace(/\s+/g, " ").trim();
+  // Uppercase keywords
+  const kw = /\b(select|from|where|left join|right join|inner join|outer join|join|order by|group by|having|limit|offset|union all|union|insert into|values|update|set|delete from|returning|and|or|on|as|in|is|not|null|distinct|case|when|then|else|end)\b/gi;
+  s = s.replace(kw, (m) => m.toUpperCase());
+  // Line breaks before major clauses
+  for (const k of breakBefore) {
+    const re = new RegExp(`\\s+${k.replace(/ /g, "\\s+")}\\b`, "g");
+    s = s.replace(re, `\n${k}`);
+  }
+  // Indent AND/OR on WHERE
+  s = s.replace(/\s+(AND|OR)\b/g, "\n  $1");
+  // After SELECT: split columns
+  s = s.replace(/^SELECT\s+(.+?)(?=\n|$)/m, (_m, cols) => {
+    const parts = cols.split(/,(?![^(]*\))/).map((c: string) => c.trim());
+    if (parts.length <= 1) return `SELECT ${cols.trim()}`;
+    return "SELECT\n  " + parts.join(",\n  ");
+  });
+  // Ensure trailing semicolon stays on its own
+  s = s.replace(/\s*;\s*$/, ";");
+  return s.trim();
+}
+
+// ---------- Parameter helpers (:name) ----------
+function extractParams(sql: string): string[] {
+  const re = /(?<!:):([a-zA-Z_][a-zA-Z0-9_]*)/g;
+  const set = new Set<string>();
+  let m;
+  while ((m = re.exec(sql))) set.add(m[1]);
+  return Array.from(set);
+}
+
+function applyParams(sql: string, params: Record<string, string>): string {
+  return sql.replace(/(?<!:):([a-zA-Z_][a-zA-Z0-9_]*)/g, (_m, name) => {
+    if (!(name in params)) return `:${name}`;
+    const v = params[name];
+    if (v === "" || v == null) return "NULL";
+    if (/^-?\d+(\.\d+)?$/.test(v)) return v;
+    return `'${v.replace(/'/g, "''")}'`;
+  });
+}
+
+// ---------- Export helpers ----------
+function downloadFile(filename: string, content: string, mime: string) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function rowsToCSV(cols: string[], rows: any[]): string {
+  const esc = (v: any) => {
+    const s = v == null ? "" : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  return [cols.join(","), ...rows.map((r) => cols.map((c) => esc(r[c])).join(","))].join("\n");
+}
 
 export const Route = createFileRoute("/_app/queries")({ component: QueriesPage });
 
@@ -218,7 +286,15 @@ function QueryDialog({ initial, onClose, onSaved }: any) {
   }
 
   return (
-    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+    <DialogContent
+      className="max-w-3xl max-h-[90vh] overflow-y-auto"
+      onKeyDown={(e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+          e.preventDefault();
+          if (!saving) save();
+        }
+      }}
+    >
       <DialogHeader>
         <DialogTitle>{initial ? "Editar query" : "Nova query"}</DialogTitle>
       </DialogHeader>
@@ -246,7 +322,20 @@ function QueryDialog({ initial, onClose, onSaved }: any) {
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <Label>SQL *</Label>
-            <span className="text-[10px] text-muted-foreground font-mono">{form.sql_content.length} chars</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground font-mono">{form.sql_content.length} chars</span>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setForm((f: any) => ({ ...f, sql_content: formatSQL(f.sql_content) }));
+                  toast.success("SQL formatado");
+                }}
+              >
+                <Wand2 className="h-3.5 w-3.5 mr-1.5" /> Formatar SQL
+              </Button>
+            </div>
           </div>
           <div className="relative rounded border border-border bg-background/60">
             <pre
@@ -262,7 +351,11 @@ function QueryDialog({ initial, onClose, onSaved }: any) {
               className="relative bg-transparent text-transparent caret-primary font-mono text-xs leading-relaxed resize-none border-0 focus-visible:ring-0"
             />
           </div>
+          <p className="text-[10px] text-muted-foreground font-mono">
+            Atalho: <kbd className="px-1 py-0.5 rounded bg-muted">Ctrl+S</kbd> salva · use <code>:nome</code> para parâmetros
+          </p>
         </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>Tags (separadas por vírgula)</Label>
@@ -287,6 +380,12 @@ function QueryDialog({ initial, onClose, onSaved }: any) {
 function RunnerDialog({ query, onClose, onRan }: any) {
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const paramNames = useMemo(() => extractParams(query.sql_content), [query.sql_content]);
+  const [params, setParams] = useState<Record<string, string>>(
+    () => Object.fromEntries(paramNames.map((p) => [p, ""])),
+  );
+
+  const finalSQL = useMemo(() => applyParams(query.sql_content, params), [query.sql_content, params]);
 
   async function exec() {
     setRunning(true);
@@ -316,9 +415,28 @@ function RunnerDialog({ query, onClose, onRan }: any) {
     }, 900);
   }
 
+  function exportCSV() {
+    if (!result?.ok) return;
+    downloadFile(`${query.name}.csv`, rowsToCSV(result.cols, result.rows), "text/csv;charset=utf-8");
+    toast.success("CSV exportado");
+  }
+  function exportJSON() {
+    if (!result?.ok) return;
+    downloadFile(`${query.name}.json`, JSON.stringify(result.rows, null, 2), "application/json");
+    toast.success("JSON exportado");
+  }
+
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="max-w-4xl max-h-[90vh] overflow-y-auto"
+        onKeyDown={(e) => {
+          if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+            e.preventDefault();
+            if (!running && query.database_id) exec();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Play className="h-4 w-4 text-primary" /> {query.name}
@@ -329,21 +447,72 @@ function RunnerDialog({ query, onClose, onRan }: any) {
             className="text-xs font-mono bg-background/60 border border-border rounded p-3 overflow-x-auto leading-relaxed max-h-40"
             dangerouslySetInnerHTML={{ __html: highlight(query.sql_content) }}
           />
+
+          {paramNames.length > 0 && (
+            <div className="space-y-2 rounded border border-border bg-background/40 p-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-mono uppercase tracking-wider text-primary">
+                  Parâmetros ({paramNames.length})
+                </Label>
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  Strings entre aspas, números literais, vazio = NULL
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {paramNames.map((p) => (
+                  <div key={p} className="space-y-1">
+                    <Label className="text-[11px] font-mono text-secondary">:{p}</Label>
+                    <Input
+                      value={params[p] ?? ""}
+                      onChange={(e) => setParams({ ...params, [p]: e.target.value })}
+                      placeholder={`valor para :${p}`}
+                      className="h-8 font-mono text-xs"
+                    />
+                  </div>
+                ))}
+              </div>
+              <details className="text-[11px] font-mono">
+                <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                  Ver SQL com parâmetros substituídos
+                </summary>
+                <pre
+                  className="mt-2 p-2 bg-background/60 border border-border rounded overflow-x-auto"
+                  dangerouslySetInnerHTML={{ __html: highlight(finalSQL) }}
+                />
+              </details>
+            </div>
+          )}
+
           {!query.database_id && (
             <div className="text-xs text-warning bg-warning/10 border border-warning/30 rounded p-2.5 font-mono">
               ⚠ Esta query não tem banco vinculado. Selecione um banco no Editor.
             </div>
           )}
-          <Button onClick={exec} disabled={running || !query.database_id} className="w-full">
-            <Play className="h-4 w-4 mr-1.5" /> {running ? "Executando…" : "Executar no agente"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={exec} disabled={running || !query.database_id} className="flex-1">
+              <Play className="h-4 w-4 mr-1.5" /> {running ? "Executando…" : "Executar no agente"}
+            </Button>
+            <span className="text-[10px] font-mono text-muted-foreground">
+              <kbd className="px-1 py-0.5 rounded bg-muted">Ctrl+Enter</kbd>
+            </span>
+          </div>
           {result && (
             <div className="space-y-2">
               {result.ok ? (
                 <>
-                  <div className="flex items-center gap-3 text-xs font-mono">
-                    <Badge variant="success">SUCESSO</Badge>
-                    <span className="text-muted-foreground">{result.total} registros · {result.duration}ms</span>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-3 text-xs font-mono">
+                      <Badge variant="success">SUCESSO</Badge>
+                      <span className="text-muted-foreground">{result.total} registros · {result.duration}ms</span>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <Button size="sm" variant="outline" onClick={exportCSV}>
+                        <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" /> CSV
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={exportJSON}>
+                        <FileJson className="h-3.5 w-3.5 mr-1.5" /> JSON
+                      </Button>
+                    </div>
                   </div>
                   <div className="overflow-x-auto border border-border rounded">
                     <table className="w-full text-xs font-mono">
@@ -375,3 +544,4 @@ function RunnerDialog({ query, onClose, onRan }: any) {
     </Dialog>
   );
 }
+
