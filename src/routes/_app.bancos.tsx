@@ -275,30 +275,35 @@ function DatabaseCard({
   }
 
   async function copyConfig() {
-    const config = {
-      agent: "LocalBridge",
-      version: "1.0",
-      database_id: db.id,
-      name: db.name,
-      connection: {
-        host: db.host ?? "",
-        port: db.port ?? 3050,
-        filepath: db.filepath ?? "",
-        username: db.username ?? "SYSDBA",
-        password: db.password_encrypted ?? "",
-        charset: db.charset ?? "WIN1252",
-        firebird_version: db.firebird_version ?? "2.5",
-      },
-      agent_endpoint: db.agent_endpoint ?? "",
-      agent_token: db.agent_token ?? "",
-      api: {
-        base_url: import.meta.env.VITE_SUPABASE_URL,
-        anon_key: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-      },
-    };
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const env = `# Configuração do agente LocalBridge para FireSync Hub
+# Endpoint do FireSync Hub (URL pública do seu app)
+REMOTE_ENDPOINT=${origin}/api/public/sync
+
+# Token de autenticação
+API_TOKEN=${db.agent_token ?? ""}
+
+# Identificador único deste agente
+AGENT_UID=${db.agent_uid ?? db.id}
+AGENT_ALIAS=${db.name}
+
+# Banco Firebird local
+DB_TYPE=firebird
+DB_HOST=${db.host ?? "localhost"}
+DB_PORT=${db.port ?? 3050}
+DB_PATH=${db.filepath ?? ""}
+DB_USER=${db.username ?? "SYSDBA"}
+DB_PASS=${db.password_encrypted ?? ""}
+DB_CHARSET=${db.charset ?? "WIN1252"}
+
+# Intervalo de sincronização (segundos)
+SYNC_INTERVAL=${db.sync_interval ?? 900}
+
+# Tabelas a sincronizar (separadas por vírgula, ou ALL para todas)
+SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
     try {
-      await navigator.clipboard.writeText(JSON.stringify(config, null, 2));
-      toast.success("Configuração copiada para a área de transferência");
+      await navigator.clipboard.writeText(env);
+      toast.success("Arquivo .env copiado para a área de transferência");
     } catch {
       toast.error("Falha ao copiar configuração");
     }
@@ -316,6 +321,7 @@ function DatabaseCard({
       <dl className="text-xs space-y-1.5 text-muted-foreground font-mono mb-3">
         <Row label="Host">{db.host ?? "—"}:{db.port ?? 3050}</Row>
         <Row label="Arquivo">{db.filepath ?? "—"}</Row>
+        <Row label="Agente">{db.agent_uid ?? "—"}</Row>
         <Row label="Firebird">{db.firebird_version} · {db.charset}</Row>
         <Row label="Última sync">{formatRelative(db.last_sync_at)}</Row>
       </dl>
@@ -395,6 +401,9 @@ function DatabaseDialog({
     firebird_version: initial?.firebird_version ?? "2.5",
     agent_token: initial?.agent_token ?? "",
     agent_endpoint: initial?.agent_endpoint ?? "",
+    agent_uid: initial?.agent_uid ?? "",
+    sync_interval: initial?.sync_interval ?? 900,
+    sync_tables: initial?.sync_tables ?? "ALL",
     notes: initial?.notes ?? "",
   });
   const [showPwd, setShowPwd] = useState(false);
@@ -488,6 +497,18 @@ function DatabaseDialog({
               {["2.1", "2.5", "3.0", "4.0"].map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
             </SelectContent>
           </Select>
+        </div>
+        <div className="col-span-2 space-y-1.5">
+          <Label>ID do agente (Agent UID)</Label>
+          <Input value={form.agent_uid} onChange={(e) => setForm({ ...form, agent_uid: e.target.value })} placeholder="pharmapele-duque-001" className="font-mono text-xs" />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Intervalo de sync (segundos)</Label>
+          <Input type="number" value={form.sync_interval} onChange={(e) => setForm({ ...form, sync_interval: parseInt(e.target.value) || 900 })} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Tabelas para sincronizar</Label>
+          <Input value={form.sync_tables} onChange={(e) => setForm({ ...form, sync_tables: e.target.value })} placeholder="ALL ou CLIENTES,PRODUTOS" />
         </div>
         <div className="col-span-2 space-y-1.5">
           <Label>Endpoint do agente</Label>
