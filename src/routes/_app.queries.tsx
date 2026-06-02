@@ -14,9 +14,77 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Code2, Star, Play, Pencil, Trash2, Search, Copy } from "lucide-react";
+import { Plus, Code2, Star, Play, Pencil, Trash2, Search, Copy, Wand2, Download, FileJson, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { formatRelative } from "@/lib/format";
+
+// ---------- SQL formatter (simple, dependency-free) ----------
+function formatSQL(sql: string): string {
+  const breakBefore = [
+    "SELECT", "FROM", "WHERE", "LEFT JOIN", "RIGHT JOIN", "INNER JOIN",
+    "OUTER JOIN", "JOIN", "ORDER BY", "GROUP BY", "HAVING", "LIMIT",
+    "OFFSET", "UNION ALL", "UNION", "INSERT INTO", "VALUES", "UPDATE",
+    "SET", "DELETE FROM", "RETURNING",
+  ];
+  let s = sql.replace(/\s+/g, " ").trim();
+  // Uppercase keywords
+  const kw = /\b(select|from|where|left join|right join|inner join|outer join|join|order by|group by|having|limit|offset|union all|union|insert into|values|update|set|delete from|returning|and|or|on|as|in|is|not|null|distinct|case|when|then|else|end)\b/gi;
+  s = s.replace(kw, (m) => m.toUpperCase());
+  // Line breaks before major clauses
+  for (const k of breakBefore) {
+    const re = new RegExp(`\\s+${k.replace(/ /g, "\\s+")}\\b`, "g");
+    s = s.replace(re, `\n${k}`);
+  }
+  // Indent AND/OR on WHERE
+  s = s.replace(/\s+(AND|OR)\b/g, "\n  $1");
+  // After SELECT: split columns
+  s = s.replace(/^SELECT\s+(.+?)(?=\n|$)/m, (_m, cols) => {
+    const parts = cols.split(/,(?![^(]*\))/).map((c: string) => c.trim());
+    if (parts.length <= 1) return `SELECT ${cols.trim()}`;
+    return "SELECT\n  " + parts.join(",\n  ");
+  });
+  // Ensure trailing semicolon stays on its own
+  s = s.replace(/\s*;\s*$/, ";");
+  return s.trim();
+}
+
+// ---------- Parameter helpers (:name) ----------
+function extractParams(sql: string): string[] {
+  const re = /(?<!:):([a-zA-Z_][a-zA-Z0-9_]*)/g;
+  const set = new Set<string>();
+  let m;
+  while ((m = re.exec(sql))) set.add(m[1]);
+  return Array.from(set);
+}
+
+function applyParams(sql: string, params: Record<string, string>): string {
+  return sql.replace(/(?<!:):([a-zA-Z_][a-zA-Z0-9_]*)/g, (_m, name) => {
+    if (!(name in params)) return `:${name}`;
+    const v = params[name];
+    if (v === "" || v == null) return "NULL";
+    if (/^-?\d+(\.\d+)?$/.test(v)) return v;
+    return `'${v.replace(/'/g, "''")}'`;
+  });
+}
+
+// ---------- Export helpers ----------
+function downloadFile(filename: string, content: string, mime: string) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function rowsToCSV(cols: string[], rows: any[]): string {
+  const esc = (v: any) => {
+    const s = v == null ? "" : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  return [cols.join(","), ...rows.map((r) => cols.map((c) => esc(r[c])).join(","))].join("\n");
+}
 
 export const Route = createFileRoute("/_app/queries")({ component: QueriesPage });
 
