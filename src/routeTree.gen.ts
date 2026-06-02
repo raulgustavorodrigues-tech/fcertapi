@@ -20,6 +20,7 @@ import { Route as AppConfiguracoesRouteImport } from './routes/_app.configuracoe
 import { Route as AppConectividadeRouteImport } from './routes/_app.conectividade'
 import { Route as AppBancosRouteImport } from './routes/_app.bancos'
 import { Route as ApiPublicSyncRouteImport } from './routes/api/public/sync'
+import { Route as ApiPublicRegisterRouteImport } from './routes/api/public/register'
 import { Route as ApiPublicHeartbeatRouteImport } from './routes/api/public/heartbeat'
 import { Route as ApiPublicCommand_resultRouteImport } from './routes/api/public/command_result'
 
@@ -77,6 +78,11 @@ const ApiPublicSyncRoute = ApiPublicSyncRouteImport.update({
   path: '/api/public/sync',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicRegisterRoute = ApiPublicRegisterRouteImport.update({
+  id: '/api/public/register',
+  path: '/api/public/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHeartbeatRoute = ApiPublicHeartbeatRouteImport.update({
   id: '/api/public/heartbeat',
   path: '/api/public/heartbeat',
@@ -100,6 +106,7 @@ export interface FileRoutesByFullPath {
   '/tabelas': typeof AppTabelasRoute
   '/api/public/command_result': typeof ApiPublicCommand_resultRoute
   '/api/public/heartbeat': typeof ApiPublicHeartbeatRoute
+  '/api/public/register': typeof ApiPublicRegisterRoute
   '/api/public/sync': typeof ApiPublicSyncRoute
 }
 export interface FileRoutesByTo {
@@ -114,6 +121,7 @@ export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/api/public/command_result': typeof ApiPublicCommand_resultRoute
   '/api/public/heartbeat': typeof ApiPublicHeartbeatRoute
+  '/api/public/register': typeof ApiPublicRegisterRoute
   '/api/public/sync': typeof ApiPublicSyncRoute
 }
 export interface FileRoutesById {
@@ -130,6 +138,7 @@ export interface FileRoutesById {
   '/_app/': typeof AppIndexRoute
   '/api/public/command_result': typeof ApiPublicCommand_resultRoute
   '/api/public/heartbeat': typeof ApiPublicHeartbeatRoute
+  '/api/public/register': typeof ApiPublicRegisterRoute
   '/api/public/sync': typeof ApiPublicSyncRoute
 }
 export interface FileRouteTypes {
@@ -146,6 +155,7 @@ export interface FileRouteTypes {
     | '/tabelas'
     | '/api/public/command_result'
     | '/api/public/heartbeat'
+    | '/api/public/register'
     | '/api/public/sync'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -160,6 +170,7 @@ export interface FileRouteTypes {
     | '/'
     | '/api/public/command_result'
     | '/api/public/heartbeat'
+    | '/api/public/register'
     | '/api/public/sync'
   id:
     | '__root__'
@@ -175,6 +186,7 @@ export interface FileRouteTypes {
     | '/_app/'
     | '/api/public/command_result'
     | '/api/public/heartbeat'
+    | '/api/public/register'
     | '/api/public/sync'
   fileRoutesById: FileRoutesById
 }
@@ -183,6 +195,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ApiPublicCommand_resultRoute: typeof ApiPublicCommand_resultRoute
   ApiPublicHeartbeatRoute: typeof ApiPublicHeartbeatRoute
+  ApiPublicRegisterRoute: typeof ApiPublicRegisterRoute
   ApiPublicSyncRoute: typeof ApiPublicSyncRoute
 }
 
@@ -265,6 +278,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/register': {
+      id: '/api/public/register'
+      path: '/api/public/register'
+      fullPath: '/api/public/register'
+      preLoaderRoute: typeof ApiPublicRegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/heartbeat': {
       id: '/api/public/heartbeat'
       path: '/api/public/heartbeat'
@@ -311,6 +331,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ApiPublicCommand_resultRoute: ApiPublicCommand_resultRoute,
   ApiPublicHeartbeatRoute: ApiPublicHeartbeatRoute,
+  ApiPublicRegisterRoute: ApiPublicRegisterRoute,
   ApiPublicSyncRoute: ApiPublicSyncRoute,
 }
 export const routeTree = rootRouteImport
