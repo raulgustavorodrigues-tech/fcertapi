@@ -93,6 +93,8 @@ function DashboardPage() {
         <KpiCard icon={<Activity className="h-5 w-5" />} label="Agentes online" value={data?.agentsOnline} loading={isLoading} delta="0" accent="warning" />
       </div>
 
+      <AgentHealthSection agents={data?.allAgents ?? []} loading={isLoading} />
+
       {/* ALERTAS ATIVOS */}
       <AlertsPanel
         loading={isLoading}

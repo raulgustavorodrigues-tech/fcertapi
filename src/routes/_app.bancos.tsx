@@ -45,7 +45,7 @@ function BancosPage() {
   const { data: databases = [], isLoading } = useQuery({
     queryKey: ["databases", company],
     queryFn: async () => {
-      let q = supabase.from("databases").select("*, companies(name)").order("created_at", { ascending: false });
+      let q = supabase.from("databases").select("*, companies(name), agents(status, last_heartbeat_at, tunnel_url, pending_commands)").order("created_at", { ascending: false });
       if (company && company !== "all") q = q.eq("company_id", company);
       const { data, error } = await q;
       if (error) throw error;
@@ -309,12 +309,24 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
     }
   }
 
+  const agent = Array.isArray(db.agents) ? db.agents[0] : db.agents;
+  const connMode = (() => {
+    if (!agent?.last_heartbeat_at) return { label: "Offline", variant: "destructive" as const };
+    const age = Date.now() - new Date(agent.last_heartbeat_at).getTime();
+    if (age > 5 * 60 * 1000) return { label: "Offline", variant: "destructive" as const };
+    if (agent.tunnel_url) return { label: "Tunnel ativo", variant: "success" as const };
+    return { label: "Push only", variant: "muted" as const };
+  })();
+
   return (
     <Card className="p-5 bg-card border-border hover:border-primary/40 transition-colors">
       <div className="flex items-start justify-between mb-3">
         <div className="min-w-0">
           <div className="font-mono text-sm font-semibold truncate">{db.name}</div>
-          <Badge variant="info" className="mt-1.5">{db.companies?.name ?? "—"}</Badge>
+          <div className="flex gap-1.5 mt-1.5 flex-wrap">
+            <Badge variant="info">{db.companies?.name ?? "—"}</Badge>
+            <Badge variant={connMode.variant}>{connMode.label}</Badge>
+          </div>
         </div>
         <StatusBadge status={db.status} />
       </div>
