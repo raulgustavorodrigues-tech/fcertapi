@@ -312,6 +312,30 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
     }
   }
 
+  async function downloadAgent() {
+    if (!db.agent_token) {
+      toast.error("Este banco não tem token. Edite o banco e gere/salve um token primeiro.");
+      return;
+    }
+    try {
+      toast.info("Gerando pacote do agente…");
+      const url = `/api/public/agent-bundle?database_id=${encodeURIComponent(db.id)}&token=${encodeURIComponent(db.agent_token)}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(await res.text());
+      const blob = await res.blob();
+      const cd = res.headers.get("content-disposition") ?? "";
+      const m = /filename="?([^"]+)"?/i.exec(cd);
+      const filename = m?.[1] ?? `firesync-agent-${db.id}.zip`;
+      const a = document.createElement("a");
+      const objUrl = URL.createObjectURL(blob);
+      a.href = objUrl; a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(objUrl);
+      toast.success("Pacote do agente baixado");
+    } catch (e: any) {
+      toast.error(`Falha ao baixar agente: ${e.message ?? e}`);
+    }
+
   const agent = Array.isArray(db.agents) ? db.agents[0] : db.agents;
   const connMode = (() => {
     if (!agent?.last_heartbeat_at) return { label: "Offline", variant: "destructive" as const };
