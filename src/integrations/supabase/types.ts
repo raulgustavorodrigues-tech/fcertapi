@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_token_history: {
+        Row: {
+          created_at: string
+          database_id: string
+          id: string
+          revoked_at: string | null
+          revoked_reason: string | null
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          database_id: string
+          id?: string
+          revoked_at?: string | null
+          revoked_reason?: string | null
+          token: string
+        }
+        Update: {
+          created_at?: string
+          database_id?: string
+          id?: string
+          revoked_at?: string | null
+          revoked_reason?: string | null
+          token?: string
+        }
+        Relationships: []
+      }
       agents: {
         Row: {
           agent_uid: string
