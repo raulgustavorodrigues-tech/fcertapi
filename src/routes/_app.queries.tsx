@@ -14,7 +14,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Code2, Star, Play, Pencil, Trash2, Search, Copy, Wand2, Download, FileJson, FileSpreadsheet } from "lucide-react";
+import { Plus, Code2, Star, Play, Pencil, Trash2, Search, Copy, Wand2, FileJson, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { formatRelative } from "@/lib/format";
 
