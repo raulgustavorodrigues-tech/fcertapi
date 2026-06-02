@@ -380,6 +380,12 @@ function QueryDialog({ initial, onClose, onSaved }: any) {
 function RunnerDialog({ query, onClose, onRan }: any) {
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const paramNames = useMemo(() => extractParams(query.sql_content), [query.sql_content]);
+  const [params, setParams] = useState<Record<string, string>>(
+    () => Object.fromEntries(paramNames.map((p) => [p, ""])),
+  );
+
+  const finalSQL = useMemo(() => applyParams(query.sql_content, params), [query.sql_content, params]);
 
   async function exec() {
     setRunning(true);
@@ -409,9 +415,28 @@ function RunnerDialog({ query, onClose, onRan }: any) {
     }, 900);
   }
 
+  function exportCSV() {
+    if (!result?.ok) return;
+    downloadFile(`${query.name}.csv`, rowsToCSV(result.cols, result.rows), "text/csv;charset=utf-8");
+    toast.success("CSV exportado");
+  }
+  function exportJSON() {
+    if (!result?.ok) return;
+    downloadFile(`${query.name}.json`, JSON.stringify(result.rows, null, 2), "application/json");
+    toast.success("JSON exportado");
+  }
+
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="max-w-4xl max-h-[90vh] overflow-y-auto"
+        onKeyDown={(e) => {
+          if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+            e.preventDefault();
+            if (!running && query.database_id) exec();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Play className="h-4 w-4 text-primary" /> {query.name}
@@ -422,21 +447,72 @@ function RunnerDialog({ query, onClose, onRan }: any) {
             className="text-xs font-mono bg-background/60 border border-border rounded p-3 overflow-x-auto leading-relaxed max-h-40"
             dangerouslySetInnerHTML={{ __html: highlight(query.sql_content) }}
           />
+
+          {paramNames.length > 0 && (
+            <div className="space-y-2 rounded border border-border bg-background/40 p-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-mono uppercase tracking-wider text-primary">
+                  Parâmetros ({paramNames.length})
+                </Label>
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  Strings entre aspas, números literais, vazio = NULL
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {paramNames.map((p) => (
+                  <div key={p} className="space-y-1">
+                    <Label className="text-[11px] font-mono text-secondary">:{p}</Label>
+                    <Input
+                      value={params[p] ?? ""}
+                      onChange={(e) => setParams({ ...params, [p]: e.target.value })}
+                      placeholder={`valor para :${p}`}
+                      className="h-8 font-mono text-xs"
+                    />
+                  </div>
+                ))}
+              </div>
+              <details className="text-[11px] font-mono">
+                <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                  Ver SQL com parâmetros substituídos
+                </summary>
+                <pre
+                  className="mt-2 p-2 bg-background/60 border border-border rounded overflow-x-auto"
+                  dangerouslySetInnerHTML={{ __html: highlight(finalSQL) }}
+                />
+              </details>
+            </div>
+          )}
+
           {!query.database_id && (
             <div className="text-xs text-warning bg-warning/10 border border-warning/30 rounded p-2.5 font-mono">
               ⚠ Esta query não tem banco vinculado. Selecione um banco no Editor.
             </div>
           )}
-          <Button onClick={exec} disabled={running || !query.database_id} className="w-full">
-            <Play className="h-4 w-4 mr-1.5" /> {running ? "Executando…" : "Executar no agente"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={exec} disabled={running || !query.database_id} className="flex-1">
+              <Play className="h-4 w-4 mr-1.5" /> {running ? "Executando…" : "Executar no agente"}
+            </Button>
+            <span className="text-[10px] font-mono text-muted-foreground">
+              <kbd className="px-1 py-0.5 rounded bg-muted">Ctrl+Enter</kbd>
+            </span>
+          </div>
           {result && (
             <div className="space-y-2">
               {result.ok ? (
                 <>
-                  <div className="flex items-center gap-3 text-xs font-mono">
-                    <Badge variant="success">SUCESSO</Badge>
-                    <span className="text-muted-foreground">{result.total} registros · {result.duration}ms</span>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-3 text-xs font-mono">
+                      <Badge variant="success">SUCESSO</Badge>
+                      <span className="text-muted-foreground">{result.total} registros · {result.duration}ms</span>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <Button size="sm" variant="outline" onClick={exportCSV}>
+                        <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" /> CSV
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={exportJSON}>
+                        <FileJson className="h-3.5 w-3.5 mr-1.5" /> JSON
+                      </Button>
+                    </div>
                   </div>
                   <div className="overflow-x-auto border border-border rounded">
                     <table className="w-full text-xs font-mono">
@@ -468,3 +544,4 @@ function RunnerDialog({ query, onClose, onRan }: any) {
     </Dialog>
   );
 }
+
