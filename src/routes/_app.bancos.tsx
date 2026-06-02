@@ -493,6 +493,18 @@ function DatabaseDialog({
           </Select>
         </div>
         <div className="col-span-2 space-y-1.5">
+          <Label>ID do agente (Agent UID)</Label>
+          <Input value={form.agent_uid} onChange={(e) => setForm({ ...form, agent_uid: e.target.value })} placeholder="pharmapele-duque-001" className="font-mono text-xs" />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Intervalo de sync (segundos)</Label>
+          <Input type="number" value={form.sync_interval} onChange={(e) => setForm({ ...form, sync_interval: parseInt(e.target.value) || 900 })} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Tabelas para sincronizar</Label>
+          <Input value={form.sync_tables} onChange={(e) => setForm({ ...form, sync_tables: e.target.value })} placeholder="ALL ou CLIENTES,PRODUTOS" />
+        </div>
+        <div className="col-span-2 space-y-1.5">
           <Label>Endpoint do agente</Label>
           <Input value={form.agent_endpoint} onChange={(e) => setForm({ ...form, agent_endpoint: e.target.value })} placeholder="http://192.168.1.100:8000" />
         </div>
