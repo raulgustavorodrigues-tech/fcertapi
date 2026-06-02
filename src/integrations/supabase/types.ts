@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_logs: {
+        Row: {
+          agent_id: string | null
+          context: Json | null
+          created_at: string
+          id: string
+          level: string
+          message: string
+        }
+        Insert: {
+          agent_id?: string | null
+          context?: Json | null
+          created_at?: string
+          id?: string
+          level: string
+          message: string
+        }
+        Update: {
+          agent_id?: string | null
+          context?: Json | null
+          created_at?: string
+          id?: string
+          level?: string
+          message?: string
+        }
+        Relationships: []
+      }
       agent_token_history: {
         Row: {
           created_at: string
@@ -48,11 +75,16 @@ export type Database = {
           alias: string | null
           database_id: string | null
           first_seen_at: string
+          heartbeat_interval_seconds: number
           id: string
           ip_address: string | null
           last_heartbeat_at: string | null
+          pending_commands: Json
+          push_only: boolean
           status: string
+          system_info: Json | null
           total_syncs: number
+          tunnel_url: string | null
         }
         Insert: {
           agent_uid: string
@@ -60,11 +92,16 @@ export type Database = {
           alias?: string | null
           database_id?: string | null
           first_seen_at?: string
+          heartbeat_interval_seconds?: number
           id?: string
           ip_address?: string | null
           last_heartbeat_at?: string | null
+          pending_commands?: Json
+          push_only?: boolean
           status?: string
+          system_info?: Json | null
           total_syncs?: number
+          tunnel_url?: string | null
         }
         Update: {
           agent_uid?: string
@@ -72,11 +109,16 @@ export type Database = {
           alias?: string | null
           database_id?: string | null
           first_seen_at?: string
+          heartbeat_interval_seconds?: number
           id?: string
           ip_address?: string | null
           last_heartbeat_at?: string | null
+          pending_commands?: Json
+          push_only?: boolean
           status?: string
+          system_info?: Json | null
           total_syncs?: number
+          tunnel_url?: string | null
         }
         Relationships: [
           {
@@ -87,6 +129,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      command_results: {
+        Row: {
+          agent_id: string | null
+          command_id: string
+          command_type: string
+          completed_at: string | null
+          created_at: string
+          database_id: string | null
+          duration_ms: number | null
+          enqueued_at: string
+          error_message: string | null
+          id: string
+          payload: Json | null
+          picked_up_at: string | null
+          result: Json | null
+          status: string
+        }
+        Insert: {
+          agent_id?: string | null
+          command_id: string
+          command_type: string
+          completed_at?: string | null
+          created_at?: string
+          database_id?: string | null
+          duration_ms?: number | null
+          enqueued_at?: string
+          error_message?: string | null
+          id?: string
+          payload?: Json | null
+          picked_up_at?: string | null
+          result?: Json | null
+          status?: string
+        }
+        Update: {
+          agent_id?: string | null
+          command_id?: string
+          command_type?: string
+          completed_at?: string | null
+          created_at?: string
+          database_id?: string | null
+          duration_ms?: number | null
+          enqueued_at?: string
+          error_message?: string | null
+          id?: string
+          payload?: Json | null
+          picked_up_at?: string | null
+          result?: Json | null
+          status?: string
+        }
+        Relationships: []
       }
       companies: {
         Row: {
@@ -285,6 +378,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      schema_cache: {
+        Row: {
+          cached_at: string
+          database_id: string
+          id: string
+          tables: Json
+        }
+        Insert: {
+          cached_at?: string
+          database_id: string
+          id?: string
+          tables?: Json
+        }
+        Update: {
+          cached_at?: string
+          database_id?: string
+          id?: string
+          tables?: Json
+        }
+        Relationships: []
       }
       sync_logs: {
         Row: {
