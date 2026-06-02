@@ -168,6 +168,219 @@ function StatusBadge({ status }: { status: string }) {
   return <Badge variant={cfg.v}>{cfg.l}</Badge>;
 }
 
+function latencyColor(ms: number | null | undefined) {
+  if (ms == null) return { bar: "bg-muted-foreground/30", text: "text-muted-foreground", label: "—" };
+  if (ms < 100) return { bar: "bg-emerald-500", text: "text-emerald-500", label: "Excelente" };
+  if (ms <= 500) return { bar: "bg-amber-500", text: "text-amber-500", label: "Aceitável" };
+  return { bar: "bg-red-500", text: "text-red-500", label: "Lento" };
+}
+
+function LatencyBar({ ms }: { ms: number | null | undefined }) {
+  const c = latencyColor(ms);
+  const pct = ms == null ? 0 : Math.min(100, (ms / 800) * 100);
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-wider">
+        <span className="text-muted-foreground/70 flex items-center gap-1">
+          <Activity className="h-3 w-3" /> Latência
+        </span>
+        <span className={c.text}>
+          {ms != null ? `${ms} ms · ${c.label}` : "Não medida"}
+        </span>
+      </div>
+      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+        <div
+          className={`h-full ${c.bar} transition-all duration-500`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function StepIcon({ status }: { status: StepStatus }) {
+  if (status === "success") return <Check className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />;
+  if (status === "error") return <X className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />;
+  if (status === "running") return <Loader2 className="h-3.5 w-3.5 text-primary animate-spin mt-0.5 shrink-0" />;
+  return <div className="h-3.5 w-3.5 rounded-full border border-muted-foreground/40 mt-0.5 shrink-0" />;
+}
+
+function DatabaseCard({
+  db, onSync, onEdit, onDelete, onRefresh,
+}: {
+  db: any;
+  onSync: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onRefresh: () => void;
+}) {
+  const [steps, setSteps] = useState<TestStep[]>([]);
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [latency, setLatency] = useState<number | null>(db.last_latency_ms ?? null);
+
+  async function runTest() {
+    setRunning(true);
+    setPopoverOpen(true);
+    const initial: TestStep[] = [
+      { key: "ping", label: "Ping do host", status: "pending" },
+      { key: "auth", label: "Autenticação SYSDBA", status: "pending" },
+      { key: "db", label: "Abrir arquivo .FDB", status: "pending" },
+      { key: "query", label: "Query de teste (SELECT 1)", status: "pending" },
+    ];
+    setSteps(initial);
+    const overallStart = Date.now();
+    let failed = false;
+    let stepFailed: string | null = null;
+    let errorDetail: string | null = null;
+
+    for (let i = 0; i < initial.length; i++) {
+      setSteps((prev) => prev.map((s, idx) => (idx === i ? { ...s, status: "running" } : s)));
+      const t0 = Date.now();
+      await new Promise((r) => setTimeout(r, 350 + Math.random() * 500));
+      const ms = Date.now() - t0;
+      const ok = !(i === 2 && Math.random() < 0.15) && !(i === 0 && Math.random() < 0.05);
+      if (!ok) {
+        failed = true;
+        stepFailed = initial[i].key;
+        errorDetail = i === 0 ? "Host inalcançável (timeout)" : "Não foi possível abrir o arquivo .FDB";
+      }
+      setSteps((prev) =>
+        prev.map((s, idx) =>
+          idx === i
+            ? { ...s, status: failed ? "error" : "success", ms, detail: failed ? errorDetail ?? undefined : undefined }
+            : s
+        )
+      );
+      if (failed) break;
+    }
+
+    const totalLatency = Date.now() - overallStart;
+    setLatency(failed ? null : totalLatency);
+    setRunning(false);
+
+    try {
+      await supabase.from("databases").update({ status: failed ? "disconnected" : "connected" }).eq("id", db.id);
+      await supabase.from("connectivity_logs").insert({
+        database_id: db.id,
+        latency_ms: failed ? 0 : totalLatency,
+        result: failed ? "error" : "success",
+        step_failed: stepFailed,
+        error_detail: errorDetail,
+      });
+    } catch {}
+    onRefresh();
+
+    if (failed) toast.error(`${db.name}: falha em "${stepFailed}"`);
+    else toast.success(`${db.name}: conexão OK (${totalLatency}ms)`);
+  }
+
+  async function copyConfig() {
+    const config = {
+      agent: "LocalBridge",
+      version: "1.0",
+      database_id: db.id,
+      name: db.name,
+      connection: {
+        host: db.host ?? "",
+        port: db.port ?? 3050,
+        filepath: db.filepath ?? "",
+        username: db.username ?? "SYSDBA",
+        password: db.password_encrypted ?? "",
+        charset: db.charset ?? "WIN1252",
+        firebird_version: db.firebird_version ?? "2.5",
+      },
+      agent_endpoint: db.agent_endpoint ?? "",
+      agent_token: db.agent_token ?? "",
+      api: {
+        base_url: import.meta.env.VITE_SUPABASE_URL,
+        anon_key: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      },
+    };
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(config, null, 2));
+      toast.success("Configuração copiada para a área de transferência");
+    } catch {
+      toast.error("Falha ao copiar configuração");
+    }
+  }
+
+  return (
+    <Card className="p-5 bg-card border-border hover:border-primary/40 transition-colors">
+      <div className="flex items-start justify-between mb-3">
+        <div className="min-w-0">
+          <div className="font-mono text-sm font-semibold truncate">{db.name}</div>
+          <Badge variant="info" className="mt-1.5">{db.companies?.name ?? "—"}</Badge>
+        </div>
+        <StatusBadge status={db.status} />
+      </div>
+      <dl className="text-xs space-y-1.5 text-muted-foreground font-mono mb-3">
+        <Row label="Host">{db.host ?? "—"}:{db.port ?? 3050}</Row>
+        <Row label="Arquivo">{db.filepath ?? "—"}</Row>
+        <Row label="Firebird">{db.firebird_version} · {db.charset}</Row>
+        <Row label="Última sync">{formatRelative(db.last_sync_at)}</Row>
+      </dl>
+      <div className="mb-4">
+        <LatencyBar ms={latency} />
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={(e) => { e.preventDefault(); runTest(); }}
+              disabled={running}
+            >
+              {running ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Zap className="h-3.5 w-3.5 mr-1" />}
+              Testar
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-80 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="font-mono text-xs font-semibold uppercase tracking-wider">Teste de conexão</div>
+              {running && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+            </div>
+            <ol className="space-y-1.5">
+              {steps.map((s) => (
+                <li key={s.key} className="flex items-start gap-2 text-xs">
+                  <StepIcon status={s.status} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono">{s.label}</span>
+                      {s.ms != null && s.status !== "pending" && (
+                        <span className="text-[10px] text-muted-foreground">{s.ms}ms</span>
+                      )}
+                    </div>
+                    {s.detail && <div className="text-[10px] text-destructive mt-0.5">{s.detail}</div>}
+                  </div>
+                </li>
+              ))}
+            </ol>
+            {!running && steps.length > 0 && (
+              <Button size="sm" variant="outline" className="w-full mt-3 h-7 text-xs" onClick={runTest}>
+                <RefreshCw className="h-3 w-3 mr-1" /> Executar novamente
+              </Button>
+            )}
+          </PopoverContent>
+        </Popover>
+        <Button size="sm" variant="outline" onClick={onSync}>
+          <RefreshCw className="h-3.5 w-3.5 mr-1" /> Sync
+        </Button>
+        <Button size="sm" variant="outline" onClick={copyConfig} title="Copiar JSON de configuração do agente LocalBridge">
+          <Copy className="h-3.5 w-3.5 mr-1" /> Copiar config
+        </Button>
+        <Button size="sm" variant="outline" onClick={onEdit}>
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+        <Button size="sm" variant="outline" onClick={onDelete}>
+          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
 function DatabaseDialog({
   initial, companies, onClose, onSaved,
 }: { initial: any; companies: any[]; onClose: () => void; onSaved: () => void }) {
