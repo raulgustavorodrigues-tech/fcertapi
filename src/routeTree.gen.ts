@@ -21,6 +21,7 @@ import { Route as AppConectividadeRouteImport } from './routes/_app.conectividad
 import { Route as AppBancosRouteImport } from './routes/_app.bancos'
 import { Route as ApiPublicSyncRouteImport } from './routes/api/public/sync'
 import { Route as ApiPublicHeartbeatRouteImport } from './routes/api/public/heartbeat'
+import { Route as ApiPublicCommand_resultRouteImport } from './routes/api/public/command_result'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -81,6 +82,11 @@ const ApiPublicHeartbeatRoute = ApiPublicHeartbeatRouteImport.update({
   path: '/api/public/heartbeat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCommand_resultRoute = ApiPublicCommand_resultRouteImport.update({
+  id: '/api/public/command_result',
+  path: '/api/public/command_result',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -92,6 +98,7 @@ export interface FileRoutesByFullPath {
   '/queries': typeof AppQueriesRoute
   '/sincronizacao': typeof AppSincronizacaoRoute
   '/tabelas': typeof AppTabelasRoute
+  '/api/public/command_result': typeof ApiPublicCommand_resultRoute
   '/api/public/heartbeat': typeof ApiPublicHeartbeatRoute
   '/api/public/sync': typeof ApiPublicSyncRoute
 }
@@ -105,6 +112,7 @@ export interface FileRoutesByTo {
   '/sincronizacao': typeof AppSincronizacaoRoute
   '/tabelas': typeof AppTabelasRoute
   '/': typeof AppIndexRoute
+  '/api/public/command_result': typeof ApiPublicCommand_resultRoute
   '/api/public/heartbeat': typeof ApiPublicHeartbeatRoute
   '/api/public/sync': typeof ApiPublicSyncRoute
 }
@@ -120,6 +128,7 @@ export interface FileRoutesById {
   '/_app/sincronizacao': typeof AppSincronizacaoRoute
   '/_app/tabelas': typeof AppTabelasRoute
   '/_app/': typeof AppIndexRoute
+  '/api/public/command_result': typeof ApiPublicCommand_resultRoute
   '/api/public/heartbeat': typeof ApiPublicHeartbeatRoute
   '/api/public/sync': typeof ApiPublicSyncRoute
 }
@@ -135,6 +144,7 @@ export interface FileRouteTypes {
     | '/queries'
     | '/sincronizacao'
     | '/tabelas'
+    | '/api/public/command_result'
     | '/api/public/heartbeat'
     | '/api/public/sync'
   fileRoutesByTo: FileRoutesByTo
@@ -148,6 +158,7 @@ export interface FileRouteTypes {
     | '/sincronizacao'
     | '/tabelas'
     | '/'
+    | '/api/public/command_result'
     | '/api/public/heartbeat'
     | '/api/public/sync'
   id:
@@ -162,6 +173,7 @@ export interface FileRouteTypes {
     | '/_app/sincronizacao'
     | '/_app/tabelas'
     | '/_app/'
+    | '/api/public/command_result'
     | '/api/public/heartbeat'
     | '/api/public/sync'
   fileRoutesById: FileRoutesById
@@ -169,6 +181,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  ApiPublicCommand_resultRoute: typeof ApiPublicCommand_resultRoute
   ApiPublicHeartbeatRoute: typeof ApiPublicHeartbeatRoute
   ApiPublicSyncRoute: typeof ApiPublicSyncRoute
 }
@@ -259,6 +272,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHeartbeatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/command_result': {
+      id: '/api/public/command_result'
+      path: '/api/public/command_result'
+      fullPath: '/api/public/command_result'
+      preLoaderRoute: typeof ApiPublicCommand_resultRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -289,9 +309,20 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  ApiPublicCommand_resultRoute: ApiPublicCommand_resultRoute,
   ApiPublicHeartbeatRoute: ApiPublicHeartbeatRoute,
   ApiPublicSyncRoute: ApiPublicSyncRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
