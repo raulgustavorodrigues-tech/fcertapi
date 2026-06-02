@@ -13,7 +13,12 @@ import {
   XCircle,
   KeyRound,
   ShieldCheck,
+  Wifi,
+  Clock,
+  HeartPulse,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Link } from "@tanstack/react-router";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -525,5 +530,157 @@ function SyncStatus({ status }: { status: string }) {
       {cfg.pulse && <span className="status-dot pulse" style={{ background: "currentColor" }} />}
       {cfg.label}
     </Badge>
+  );
+}
+
+function AgentHealthSection({ agents, loading }: { agents: any[]; loading: boolean }) {
+  const now = Date.now();
+  const ONE_MIN = 60 * 1000;
+  const TWO_MIN = 2 * 60 * 1000;
+  const FIVE_MIN = 5 * 60 * 1000;
+
+  const total = agents.length;
+  const online = agents.filter(
+    (a) => a.last_heartbeat_at && now - new Date(a.last_heartbeat_at).getTime() < ONE_MIN
+  ).length;
+  const offline = agents.filter(
+    (a) => !a.last_heartbeat_at || now - new Date(a.last_heartbeat_at).getTime() > FIVE_MIN
+  ).length;
+  const stuck = agents.filter((a) => {
+    const pending = Array.isArray(a.pending_commands) ? a.pending_commands : [];
+    if (pending.length === 0) return false;
+    const oldest = pending.reduce((min: number, c: any) => {
+      const t = c.enqueued_at ? new Date(c.enqueued_at).getTime() : now;
+      return Math.min(min, t);
+    }, now);
+    return now - oldest > TWO_MIN;
+  }).length;
+
+  const alertAgents = agents.filter((a) => {
+    const ageMs = a.last_heartbeat_at ? now - new Date(a.last_heartbeat_at).getTime() : Infinity;
+    if (ageMs > ONE_MIN) return true;
+    const pending = Array.isArray(a.pending_commands) ? a.pending_commands : [];
+    if (pending.length > 0) {
+      const oldest = pending.reduce(
+        (min: number, c: any) => Math.min(min, c.enqueued_at ? new Date(c.enqueued_at).getTime() : now),
+        now,
+      );
+      if (now - oldest > TWO_MIN) return true;
+    }
+    return false;
+  });
+
+  function tone(a: any): { color: string; label: string } {
+    const ageMs = a.last_heartbeat_at ? now - new Date(a.last_heartbeat_at).getTime() : Infinity;
+    if (ageMs > FIVE_MIN) return { color: "destructive", label: "Offline" };
+    const pending = Array.isArray(a.pending_commands) ? a.pending_commands : [];
+    if (pending.length > 0) {
+      const oldest = pending.reduce(
+        (min: number, c: any) => Math.min(min, c.enqueued_at ? new Date(c.enqueued_at).getTime() : now),
+        now,
+      );
+      if (now - oldest > TWO_MIN) return { color: "warning", label: "Comandos travados" };
+    }
+    if (ageMs > ONE_MIN) return { color: "warning", label: "Sem heartbeat recente" };
+    return { color: "success", label: "OK" };
+  }
+
+  return (
+    <Card className="p-5 bg-card border-border">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <HeartPulse className="h-4 w-4 text-primary" />
+          <h2 className="font-mono text-sm font-semibold">Saúde dos agentes</h2>
+        </div>
+        <Badge variant="muted">{loading ? "…" : `${total} registrados`}</Badge>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <HealthStat icon={<DatabaseIcon className="h-4 w-4" />} label="Total" value={total} loading={loading} tone="muted" />
+        <HealthStat icon={<Wifi className="h-4 w-4" />} label="Online agora" value={online} loading={loading} tone="success" />
+        <HealthStat icon={<Clock className="h-4 w-4" />} label="Comandos travados >2min" value={stuck} loading={loading} tone="warning" />
+        <HealthStat icon={<WifiOff className="h-4 w-4" />} label="Offline (>5min)" value={offline} loading={loading} tone="destructive" />
+      </div>
+
+      {!loading && alertAgents.length > 0 && (
+        <div className="border-t border-border pt-3">
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-mono mb-2">
+            Agentes em alerta
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border">
+                  <th className="py-1.5 pr-3 font-medium">Agente</th>
+                  <th className="py-1.5 pr-3 font-medium">Status</th>
+                  <th className="py-1.5 pr-3 font-medium">Último heartbeat</th>
+                  <th className="py-1.5 pr-3 font-medium text-right">Ação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {alertAgents.slice(0, 6).map((a) => {
+                  const t = tone(a);
+                  return (
+                    <tr key={a.id} className="border-b border-border/50">
+                      <td className="py-2 pr-3 font-mono text-xs truncate max-w-[180px]">
+                        {a.alias ?? a.agent_uid}
+                      </td>
+                      <td className="py-2 pr-3">
+                        <Badge variant={t.color as any}>{t.label}</Badge>
+                      </td>
+                      <td className="py-2 pr-3 text-xs text-muted-foreground">
+                        {formatRelative(a.last_heartbeat_at)}
+                      </td>
+                      <td className="py-2 pr-3 text-right">
+                        <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-xs">
+                          <Link to="/sincronizacao">Ver detalhes</Link>
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {!loading && alertAgents.length === 0 && total > 0 && (
+        <div className="flex items-center gap-2 text-success text-sm pt-2 border-t border-border">
+          <ShieldCheck className="h-4 w-4" />
+          Todos os agentes operando normalmente.
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function HealthStat({
+  icon, label, value, loading, tone,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  loading: boolean;
+  tone: "muted" | "success" | "warning" | "destructive";
+}) {
+  const toneMap = {
+    muted: "text-muted-foreground bg-muted/30 border-border",
+    success: "text-success bg-success/10 border-success/30",
+    warning: "text-warning bg-warning/10 border-warning/30",
+    destructive: "text-destructive bg-destructive/10 border-destructive/30",
+  };
+  return (
+    <div className={`rounded-md border p-3 ${toneMap[tone]}`}>
+      <div className="flex items-center gap-2 mb-1">
+        {icon}
+        <span className="text-[10px] uppercase tracking-wider font-mono">{label}</span>
+      </div>
+      {loading ? (
+        <Skeleton className="h-6 w-10" />
+      ) : (
+        <div className="font-mono text-2xl font-semibold leading-none">{value}</div>
+      )}
+    </div>
   );
 }
