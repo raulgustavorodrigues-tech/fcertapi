@@ -414,8 +414,11 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
         <Button size="sm" variant="outline" onClick={onSync}>
           <RefreshCw className="h-3.5 w-3.5 mr-1" /> Sync
         </Button>
-        <Button size="sm" variant="outline" onClick={copyConfig} title="Copiar JSON de configuração do agente LocalBridge">
-          <Copy className="h-3.5 w-3.5 mr-1" /> Copiar config
+        <Button size="sm" variant="outline" onClick={copyConfig} title="Copiar .env do agente LocalBridge">
+          <Copy className="h-3.5 w-3.5 mr-1" /> Copiar .env
+        </Button>
+        <Button size="sm" onClick={downloadAgent} title="Baixar pacote ZIP do agente já configurado">
+          <Download className="h-3.5 w-3.5 mr-1" /> Baixar agente
         </Button>
         <Button size="sm" variant="outline" onClick={onEdit}>
           <Pencil className="h-3.5 w-3.5" />
