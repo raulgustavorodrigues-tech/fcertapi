@@ -321,6 +321,7 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
       <dl className="text-xs space-y-1.5 text-muted-foreground font-mono mb-3">
         <Row label="Host">{db.host ?? "—"}:{db.port ?? 3050}</Row>
         <Row label="Arquivo">{db.filepath ?? "—"}</Row>
+        <Row label="Agente">{db.agent_uid ?? "—"}</Row>
         <Row label="Firebird">{db.firebird_version} · {db.charset}</Row>
         <Row label="Última sync">{formatRelative(db.last_sync_at)}</Row>
       </dl>
