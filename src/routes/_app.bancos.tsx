@@ -110,12 +110,15 @@ function BancosPage() {
           <DialogTrigger asChild>
             <Button onClick={() => setEditing(null)}><Plus className="h-4 w-4 mr-1.5" /> Novo Banco</Button>
           </DialogTrigger>
-          <DatabaseDialog
-            initial={editing}
-            companies={companies}
-            onClose={() => { setOpen(false); setEditing(null); }}
-            onSaved={() => qc.invalidateQueries({ queryKey: ["databases"] })}
-          />
+          {open && (
+            <DatabaseDialog
+              key={editing?.id ?? "new"}
+              initial={editing}
+              companies={companies}
+              onClose={() => { setOpen(false); setEditing(null); }}
+              onSaved={() => qc.invalidateQueries({ queryKey: ["databases"] })}
+            />
+          )}
         </Dialog>
       </div>
 
