@@ -65,7 +65,7 @@ function BancosPage() {
     },
   });
 
-  async function syncNowProxy() {} // placeholder kept to preserve diff context
+  
 
   async function syncNow(db: any) {
     toast.info(`Iniciando sync em ${db.name}…`);
