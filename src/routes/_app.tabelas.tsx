@@ -250,6 +250,15 @@ function Page() {
           </Card>
         </div>
       )}
+
+      <SchemaEditorDialog
+        open={editorOpen}
+        onOpenChange={setEditorOpen}
+        databaseId={databaseId}
+        mode={editorMode}
+        table={editorMode === "alter" ? selected : null}
+        onApplied={reloadSchema}
+      />
     </div>
   );
 }
