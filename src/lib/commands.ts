@@ -4,7 +4,8 @@ export type CommandType =
   | "ping_test"
   | "list_tables"
   | "run_query"
-  | "force_sync";
+  | "force_sync"
+  | "network_test";
 
 export type PendingCommand = {
   command_id: string;
