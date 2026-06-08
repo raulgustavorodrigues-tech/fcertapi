@@ -9,10 +9,11 @@ import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Table as TableIcon, Search, Key, Columns3, RefreshCw, Loader2, Clock } from "lucide-react";
+import { Table as TableIcon, Search, Key, Columns3, RefreshCw, Loader2, Clock, Plus, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { formatRelative } from "@/lib/format";
 import { enqueueCommand, awaitCommandResult } from "@/lib/commands";
+import { SchemaEditorDialog } from "@/components/conecta/SchemaEditorDialog";
 
 export const Route = createFileRoute("/_app/tabelas")({ component: Page });
 
