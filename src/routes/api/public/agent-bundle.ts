@@ -381,6 +381,7 @@ def handle_command(cmd: Dict[str, Any]):
         if ctype == "ping_test": res = cmd_ping_test()
         elif ctype == "list_tables": res = cmd_list_tables()
         elif ctype == "run_query": res = cmd_run_query(payload)
+        elif ctype == "network_test": res = cmd_network_test(payload)
         else: raise ValueError(f"command_type desconhecido: {ctype}")
         post_result(cid, ctype, "success", result=res, duration_ms=int((time.time() - t0) * 1000))
     except Exception as e:
