@@ -217,13 +217,118 @@ def post_result(command_id: str, command_type: str, status: str, result: Any = N
 
 
 def cmd_ping_test() -> Dict[str, Any]:
+    """Diagnóstico granular: arquivo .FDB, auth SYSDBA, query de teste."""
+    import os.path, socket
+    out: Dict[str, Any] = {
+        "ping_ok": True,  # se este comando rodou, o agente está vivo
+        "file_exists": None, "file_error": None,
+        "auth_ok": None, "auth_error": None,
+        "db_reachable": None, "db_error": None,
+        "test_query_ok": None, "query_error": None,
+        "latency_ms": 0,
+    }
     t0 = time.time()
-    con = db_connect()
-    cur = con.cursor()
-    cur.execute("SELECT 1 FROM RDB$DATABASE")
-    cur.fetchone()
-    con.close()
-    return {"ok": True, "latency_ms": int((time.time() - t0) * 1000)}
+    # 1) Arquivo .FDB acessível (apenas para conexões locais)
+    try:
+        is_local = CFG["db_host"] in ("localhost", "127.0.0.1", socket.gethostname())
+        if is_local and CFG["db_path"]:
+            out["file_exists"] = os.path.isfile(CFG["db_path"])
+            if not out["file_exists"]:
+                out["file_error"] = f"Arquivo não encontrado: {CFG['db_path']}"
+        else:
+            out["file_exists"] = True  # remoto: confiar no servidor Firebird
+    except Exception as e:
+        out["file_exists"] = False
+        out["file_error"] = str(e)
+
+    # 2) Conexão / auth SYSDBA
+    con = None
+    try:
+        con = db_connect()
+        out["auth_ok"] = True
+        out["db_reachable"] = True
+    except Exception as e:
+        msg = str(e)
+        out["db_reachable"] = False
+        if "login" in msg.lower() or "password" in msg.lower() or "user name" in msg.lower():
+            out["auth_ok"] = False
+            out["auth_error"] = msg
+        else:
+            out["auth_ok"] = None
+            out["db_error"] = msg
+        out["latency_ms"] = int((time.time() - t0) * 1000)
+        raise RuntimeError(msg)
+
+    # 3) Query de teste
+    try:
+        cur = con.cursor()
+        cur.execute("SELECT 1 FROM RDB$DATABASE")
+        cur.fetchone()
+        out["test_query_ok"] = True
+    except Exception as e:
+        out["test_query_ok"] = False
+        out["query_error"] = str(e)
+        raise
+    finally:
+        try: con.close()
+        except: pass
+
+    out["latency_ms"] = int((time.time() - t0) * 1000)
+    out["ok"] = True
+    return out
+
+
+def cmd_network_test(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Testes de rede locais: DNS + HTTPS heartbeat + porta Firebird 3050."""
+    import socket
+    from urllib.parse import urlparse
+    steps: List[Dict[str, Any]] = []
+
+    # 1) DNS do endpoint de heartbeat
+    hb = CFG.get("heartbeat") or ""
+    host = urlparse(hb).hostname or ""
+    t0 = time.time()
+    try:
+        ip = socket.gethostbyname(host) if host else None
+        steps.append({"name": "DNS heartbeat", "ok": bool(ip), "detail": f"{host} -> {ip}",
+                      "latency_ms": int((time.time()-t0)*1000)})
+    except Exception as e:
+        steps.append({"name": "DNS heartbeat", "ok": False, "detail": str(e),
+                      "latency_ms": int((time.time()-t0)*1000)})
+
+    # 2) HTTPS reachability ao heartbeat (HEAD/OPTIONS aceita 401/405)
+    t0 = time.time()
+    try:
+        r = requests.options(hb, timeout=10)
+        ok = r.status_code in (200, 204, 401, 404, 405)
+        steps.append({"name": "HTTPS heartbeat", "ok": ok,
+                      "detail": f"HTTP {r.status_code}",
+                      "latency_ms": int((time.time()-t0)*1000)})
+    except Exception as e:
+        steps.append({"name": "HTTPS heartbeat", "ok": False, "detail": str(e),
+                      "latency_ms": int((time.time()-t0)*1000)})
+
+    # 3) TCP porta Firebird (somente quando host não é localhost)
+    dbh, dbp = CFG["db_host"], CFG["db_port"]
+    is_local = dbh in ("localhost", "127.0.0.1")
+    if not is_local:
+        t0 = time.time()
+        try:
+            s = socket.create_connection((dbh, dbp), timeout=5); s.close()
+            steps.append({"name": f"TCP Firebird {dbh}:{dbp}", "ok": True,
+                          "detail": "porta aberta",
+                          "latency_ms": int((time.time()-t0)*1000)})
+        except Exception as e:
+            steps.append({"name": f"TCP Firebird {dbh}:{dbp}", "ok": False,
+                          "detail": str(e),
+                          "latency_ms": int((time.time()-t0)*1000)})
+    else:
+        steps.append({"name": "TCP Firebird (embedded/local)", "ok": True,
+                      "detail": "host local — skip de porta",
+                      "latency_ms": 0})
+
+    return {"steps": steps, "ok": all(s["ok"] for s in steps)}
+
 
 
 def cmd_list_tables() -> Dict[str, Any]:
