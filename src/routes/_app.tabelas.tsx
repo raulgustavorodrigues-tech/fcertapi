@@ -45,6 +45,8 @@ function Page() {
   const [selected, setSelected] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [waitElapsed, setWaitElapsed] = useState(0);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorMode, setEditorMode] = useState<"create" | "alter">("create");
 
   const { data: databases = [] } = useQuery({
     queryKey: ["databases-list-schema"],
