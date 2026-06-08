@@ -245,11 +245,25 @@ def cmd_run_query(payload: Dict[str, Any]) -> Dict[str, Any]:
     if not sql.strip(): raise ValueError("SQL vazio")
     con = db_connect()
     cur = con.cursor()
-    cur.execute(sql)
-    cols = [d[0] for d in cur.description] if cur.description else []
-    rows = [list(r) for r in cur.fetchall()] if cols else []
+    # Suporta múltiplos statements separados por ';' (necessário p/ DDL composto)
+    statements = [s.strip() for s in sql.split(";") if s.strip()]
+    cols: list = []
+    rows: list = []
+    affected = 0
+    for stmt in statements:
+        cur.execute(stmt)
+        if cur.description:
+            cols = [d[0] for d in cur.description]
+            rows = [list(r) for r in cur.fetchall()]
+        else:
+            try:
+                affected += cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
+            except Exception:
+                pass
+    # Commit garante persistência de DDL (CREATE/ALTER/DROP) e DML
+    con.commit()
     con.close()
-    return {"columns": cols, "rows": rows, "row_count": len(rows)}
+    return {"columns": cols, "rows": rows, "row_count": len(rows), "affected": affected}
 
 
 def handle_command(cmd: Dict[str, Any]):

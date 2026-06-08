@@ -9,10 +9,11 @@ import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Table as TableIcon, Search, Key, Columns3, RefreshCw, Loader2, Clock } from "lucide-react";
+import { Table as TableIcon, Search, Key, Columns3, RefreshCw, Loader2, Clock, Plus, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { formatRelative } from "@/lib/format";
 import { enqueueCommand, awaitCommandResult } from "@/lib/commands";
+import { SchemaEditorDialog } from "@/components/conecta/SchemaEditorDialog";
 
 export const Route = createFileRoute("/_app/tabelas")({ component: Page });
 
@@ -44,6 +45,8 @@ function Page() {
   const [selected, setSelected] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [waitElapsed, setWaitElapsed] = useState(0);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorMode, setEditorMode] = useState<"create" | "alter">("create");
 
   const { data: databases = [] } = useQuery({
     queryKey: ["databases-list-schema"],
@@ -142,6 +145,16 @@ function Page() {
                 {loading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
                 Recarregar schema
               </Button>
+              <Button size="sm" onClick={() => { setEditorMode("create"); setEditorOpen(true); }}>
+                <Plus className="h-3.5 w-3.5 mr-1.5" /> Nova tabela
+              </Button>
+              <Button
+                size="sm" variant="outline"
+                disabled={!selected}
+                onClick={() => { setEditorMode("alter"); setEditorOpen(true); }}
+              >
+                <Pencil className="h-3.5 w-3.5 mr-1.5" /> Alterar
+              </Button>
               <div className="relative flex-1 min-w-[200px] max-w-sm">
                 <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filtrar…" className="pl-8 font-mono text-xs" />
@@ -237,6 +250,15 @@ function Page() {
           </Card>
         </div>
       )}
+
+      <SchemaEditorDialog
+        open={editorOpen}
+        onOpenChange={setEditorOpen}
+        databaseId={databaseId}
+        mode={editorMode}
+        table={editorMode === "alter" ? selected : null}
+        onApplied={reloadSchema}
+      />
     </div>
   );
 }
