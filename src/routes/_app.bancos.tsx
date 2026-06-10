@@ -445,6 +445,9 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
         <Button size="sm" onClick={downloadAgent} title="Baixar pacote ZIP do agente já configurado">
           <Download className="h-3.5 w-3.5 mr-1" /> Baixar agente
         </Button>
+        <Button size="sm" variant="outline" onClick={downloadProbe} title="Baixar probe de diagnóstico (somente leitura) para levantar requisitos pendentes">
+          <Download className="h-3.5 w-3.5 mr-1" /> Probe
+        </Button>
         <Button size="sm" variant="outline" onClick={onEdit}>
           <Pencil className="h-3.5 w-3.5" />
         </Button>
