@@ -24,6 +24,7 @@ import { Route as ApiPublicRegisterRouteImport } from './routes/api/public/regis
 import { Route as ApiPublicLogsRouteImport } from './routes/api/public/logs'
 import { Route as ApiPublicHeartbeatRouteImport } from './routes/api/public/heartbeat'
 import { Route as ApiPublicCommand_resultRouteImport } from './routes/api/public/command_result'
+import { Route as ApiPublicAgentProbeRouteImport } from './routes/api/public/agent-probe'
 import { Route as ApiPublicAgentBundleRouteImport } from './routes/api/public/agent-bundle'
 
 const LoginRoute = LoginRouteImport.update({
@@ -100,6 +101,11 @@ const ApiPublicCommand_resultRoute = ApiPublicCommand_resultRouteImport.update({
   path: '/api/public/command_result',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAgentProbeRoute = ApiPublicAgentProbeRouteImport.update({
+  id: '/api/public/agent-probe',
+  path: '/api/public/agent-probe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicAgentBundleRoute = ApiPublicAgentBundleRouteImport.update({
   id: '/api/public/agent-bundle',
   path: '/api/public/agent-bundle',
@@ -117,6 +123,7 @@ export interface FileRoutesByFullPath {
   '/sincronizacao': typeof AppSincronizacaoRoute
   '/tabelas': typeof AppTabelasRoute
   '/api/public/agent-bundle': typeof ApiPublicAgentBundleRoute
+  '/api/public/agent-probe': typeof ApiPublicAgentProbeRoute
   '/api/public/command_result': typeof ApiPublicCommand_resultRoute
   '/api/public/heartbeat': typeof ApiPublicHeartbeatRoute
   '/api/public/logs': typeof ApiPublicLogsRoute
@@ -134,6 +141,7 @@ export interface FileRoutesByTo {
   '/tabelas': typeof AppTabelasRoute
   '/': typeof AppIndexRoute
   '/api/public/agent-bundle': typeof ApiPublicAgentBundleRoute
+  '/api/public/agent-probe': typeof ApiPublicAgentProbeRoute
   '/api/public/command_result': typeof ApiPublicCommand_resultRoute
   '/api/public/heartbeat': typeof ApiPublicHeartbeatRoute
   '/api/public/logs': typeof ApiPublicLogsRoute
@@ -153,6 +161,7 @@ export interface FileRoutesById {
   '/_app/tabelas': typeof AppTabelasRoute
   '/_app/': typeof AppIndexRoute
   '/api/public/agent-bundle': typeof ApiPublicAgentBundleRoute
+  '/api/public/agent-probe': typeof ApiPublicAgentProbeRoute
   '/api/public/command_result': typeof ApiPublicCommand_resultRoute
   '/api/public/heartbeat': typeof ApiPublicHeartbeatRoute
   '/api/public/logs': typeof ApiPublicLogsRoute
@@ -172,6 +181,7 @@ export interface FileRouteTypes {
     | '/sincronizacao'
     | '/tabelas'
     | '/api/public/agent-bundle'
+    | '/api/public/agent-probe'
     | '/api/public/command_result'
     | '/api/public/heartbeat'
     | '/api/public/logs'
@@ -189,6 +199,7 @@ export interface FileRouteTypes {
     | '/tabelas'
     | '/'
     | '/api/public/agent-bundle'
+    | '/api/public/agent-probe'
     | '/api/public/command_result'
     | '/api/public/heartbeat'
     | '/api/public/logs'
@@ -207,6 +218,7 @@ export interface FileRouteTypes {
     | '/_app/tabelas'
     | '/_app/'
     | '/api/public/agent-bundle'
+    | '/api/public/agent-probe'
     | '/api/public/command_result'
     | '/api/public/heartbeat'
     | '/api/public/logs'
@@ -218,6 +230,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
   ApiPublicAgentBundleRoute: typeof ApiPublicAgentBundleRoute
+  ApiPublicAgentProbeRoute: typeof ApiPublicAgentProbeRoute
   ApiPublicCommand_resultRoute: typeof ApiPublicCommand_resultRoute
   ApiPublicHeartbeatRoute: typeof ApiPublicHeartbeatRoute
   ApiPublicLogsRoute: typeof ApiPublicLogsRoute
@@ -332,6 +345,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCommand_resultRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/agent-probe': {
+      id: '/api/public/agent-probe'
+      path: '/api/public/agent-probe'
+      fullPath: '/api/public/agent-probe'
+      preLoaderRoute: typeof ApiPublicAgentProbeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/agent-bundle': {
       id: '/api/public/agent-bundle'
       path: '/api/public/agent-bundle'
@@ -370,6 +390,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
   ApiPublicAgentBundleRoute: ApiPublicAgentBundleRoute,
+  ApiPublicAgentProbeRoute: ApiPublicAgentProbeRoute,
   ApiPublicCommand_resultRoute: ApiPublicCommand_resultRoute,
   ApiPublicHeartbeatRoute: ApiPublicHeartbeatRoute,
   ApiPublicLogsRoute: ApiPublicLogsRoute,
@@ -379,13 +400,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

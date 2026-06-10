@@ -337,6 +337,31 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
     }
   }
 
+  async function downloadProbe() {
+    if (!db.agent_token) {
+      toast.error("Este banco não tem token. Edite o banco e gere/salve um token primeiro.");
+      return;
+    }
+    try {
+      toast.info("Gerando probe de diagnóstico…");
+      const url = `/api/public/agent-probe?database_id=${encodeURIComponent(db.id)}&token=${encodeURIComponent(db.agent_token)}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(await res.text());
+      const blob = await res.blob();
+      const cd = res.headers.get("content-disposition") ?? "";
+      const m = /filename="?([^"]+)"?/i.exec(cd);
+      const filename = m?.[1] ?? `firesync-probe-${db.id}.zip`;
+      const a = document.createElement("a");
+      const objUrl = URL.createObjectURL(blob);
+      a.href = objUrl; a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(objUrl);
+      toast.success("Probe baixado — rode run.bat no PC do cliente");
+    } catch (e: any) {
+      toast.error(`Falha ao baixar probe: ${e.message ?? e}`);
+    }
+  }
+
 
 
   const agent = Array.isArray(db.agents) ? db.agents[0] : db.agents;
@@ -419,6 +444,9 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
         </Button>
         <Button size="sm" onClick={downloadAgent} title="Baixar pacote ZIP do agente já configurado">
           <Download className="h-3.5 w-3.5 mr-1" /> Baixar agente
+        </Button>
+        <Button size="sm" variant="outline" onClick={downloadProbe} title="Baixar probe de diagnóstico (somente leitura) para levantar requisitos pendentes">
+          <Download className="h-3.5 w-3.5 mr-1" /> Probe
         </Button>
         <Button size="sm" variant="outline" onClick={onEdit}>
           <Pencil className="h-3.5 w-3.5" />
