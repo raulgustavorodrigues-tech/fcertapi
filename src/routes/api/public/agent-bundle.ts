@@ -434,14 +434,22 @@ def main():
     while True:
         try:
             cmds = heartbeat()
+            had_cmds = bool(cmds)
             for c in cmds: handle_command(c)
+            # Após processar comandos, envia heartbeat imediato para o Hub
+            # não marcar o agente como offline durante diagnósticos longos.
+            if had_cmds:
+                try: heartbeat()
+                except Exception: pass
             if time.time() - last_sync >= CFG["sync_interval"]:
                 do_sync(); last_sync = time.time()
         except KeyboardInterrupt:
             log.info("Encerrando agente."); break
         except Exception as e:
             log.error("loop principal: %s", e)
-        time.sleep(CFG["heartbeat_interval"])
+        # Se houve comandos, dorme menos para drenar a fila rapidamente
+        time.sleep(5 if 'had_cmds' in dir() and had_cmds else CFG["heartbeat_interval"])
+
 
 
 if __name__ == "__main__":
