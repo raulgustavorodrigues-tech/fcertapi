@@ -522,15 +522,25 @@ function RunnerDialog({ query, onClose, onRan }: any) {
                       </Button>
                     </div>
                   </div>
-                  <div className="overflow-x-auto border border-border rounded">
+                  <div className="overflow-auto border border-border rounded max-h-[55vh]">
                     <table className="w-full text-xs font-mono">
-                      <thead className="bg-background/80 border-b border-border">
-                        <tr>{result.cols.map((c: string) => <th key={c} className="text-left px-3 py-2 text-primary uppercase text-[10px]">{c}</th>)}</tr>
+                      <thead className="bg-background/90 border-b border-border sticky top-0">
+                        <tr>
+                          <th className="text-left px-2 py-2 text-muted-foreground uppercase text-[10px] w-10">#</th>
+                          {result.cols.map((c: string) => <th key={c} className="text-left px-3 py-2 text-primary uppercase text-[10px] whitespace-nowrap">{c}</th>)}
+                        </tr>
                       </thead>
                       <tbody>
-                        {result.rows.map((r: any, i: number) => (
-                          <tr key={i} className="border-b border-border/50 hover:bg-background/40">
-                            {result.cols.map((c: string) => <td key={c} className="px-3 py-1.5">{String(r[c])}</td>)}
+                        {result.rows.length === 0 ? (
+                          <tr><td colSpan={result.cols.length + 1} className="text-center py-6 text-muted-foreground">Consulta executada com sucesso — nenhum registro retornado.</td></tr>
+                        ) : result.rows.map((r: any, i: number) => (
+                          <tr key={i} className="border-b border-border/50 hover:bg-background/40 align-top">
+                            <td className="px-2 py-1.5 text-muted-foreground">{i + 1}</td>
+                            {result.cols.map((c: string) => {
+                              const v = r[c];
+                              const text = v == null ? "NULL" : typeof v === "object" ? JSON.stringify(v) : String(v);
+                              return <td key={c} className="px-3 py-1.5 max-w-[320px] truncate" title={text}>{text}</td>;
+                            })}
                           </tr>
                         ))}
                       </tbody>
