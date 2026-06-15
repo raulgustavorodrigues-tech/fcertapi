@@ -437,7 +437,7 @@ function RunnerDialog({ query, onClose, onRan }: any) {
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent
-        className="max-w-4xl max-h-[90vh] overflow-y-auto"
+        className="max-w-6xl max-h-[92vh] overflow-y-auto"
         onKeyDown={(e) => {
           if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
             e.preventDefault();
