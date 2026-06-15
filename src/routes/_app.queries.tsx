@@ -337,20 +337,24 @@ function QueryDialog({ initial, onClose, onSaved }: any) {
               </Button>
             </div>
           </div>
-          <div className="relative rounded border border-border bg-background/60">
+          <Textarea
+            value={form.sql_content}
+            onChange={(e) => setForm({ ...form, sql_content: e.target.value })}
+            rows={14}
+            spellCheck={false}
+            wrap="off"
+            className="font-mono text-xs leading-relaxed bg-background/60 border-border min-h-[280px] resize-y whitespace-pre overflow-auto"
+            style={{ tabSize: 2 }}
+          />
+          <details className="text-[11px] font-mono">
+            <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+              Pré-visualizar com destaque de sintaxe
+            </summary>
             <pre
-              className="absolute inset-0 p-3 font-mono text-xs whitespace-pre-wrap pointer-events-none overflow-hidden leading-relaxed"
-              aria-hidden
-              dangerouslySetInnerHTML={{ __html: highlight(form.sql_content) + "\n" }}
+              className="mt-2 p-3 bg-background/60 border border-border rounded overflow-x-auto text-xs leading-relaxed whitespace-pre"
+              dangerouslySetInnerHTML={{ __html: highlight(form.sql_content) }}
             />
-            <Textarea
-              value={form.sql_content}
-              onChange={(e) => setForm({ ...form, sql_content: e.target.value })}
-              rows={12}
-              spellCheck={false}
-              className="relative bg-transparent text-transparent caret-primary font-mono text-xs leading-relaxed resize-none border-0 focus-visible:ring-0"
-            />
-          </div>
+          </details>
           <p className="text-[10px] text-muted-foreground font-mono">
             Atalho: <kbd className="px-1 py-0.5 rounded bg-muted">Ctrl+S</kbd> salva · use <code>:nome</code> para parâmetros
           </p>
