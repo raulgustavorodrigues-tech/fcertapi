@@ -337,20 +337,24 @@ function QueryDialog({ initial, onClose, onSaved }: any) {
               </Button>
             </div>
           </div>
-          <div className="relative rounded border border-border bg-background/60">
+          <Textarea
+            value={form.sql_content}
+            onChange={(e) => setForm({ ...form, sql_content: e.target.value })}
+            rows={14}
+            spellCheck={false}
+            wrap="off"
+            className="font-mono text-xs leading-relaxed bg-background/60 border-border min-h-[280px] resize-y whitespace-pre overflow-auto"
+            style={{ tabSize: 2 }}
+          />
+          <details className="text-[11px] font-mono">
+            <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+              Pré-visualizar com destaque de sintaxe
+            </summary>
             <pre
-              className="absolute inset-0 p-3 font-mono text-xs whitespace-pre-wrap pointer-events-none overflow-hidden leading-relaxed"
-              aria-hidden
-              dangerouslySetInnerHTML={{ __html: highlight(form.sql_content) + "\n" }}
+              className="mt-2 p-3 bg-background/60 border border-border rounded overflow-x-auto text-xs leading-relaxed whitespace-pre"
+              dangerouslySetInnerHTML={{ __html: highlight(form.sql_content) }}
             />
-            <Textarea
-              value={form.sql_content}
-              onChange={(e) => setForm({ ...form, sql_content: e.target.value })}
-              rows={12}
-              spellCheck={false}
-              className="relative bg-transparent text-transparent caret-primary font-mono text-xs leading-relaxed resize-none border-0 focus-visible:ring-0"
-            />
-          </div>
+          </details>
           <p className="text-[10px] text-muted-foreground font-mono">
             Atalho: <kbd className="px-1 py-0.5 rounded bg-muted">Ctrl+S</kbd> salva · use <code>:nome</code> para parâmetros
           </p>
@@ -433,7 +437,7 @@ function RunnerDialog({ query, onClose, onRan }: any) {
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent
-        className="max-w-4xl max-h-[90vh] overflow-y-auto"
+        className="max-w-6xl max-h-[92vh] overflow-y-auto"
         onKeyDown={(e) => {
           if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
             e.preventDefault();
@@ -518,15 +522,25 @@ function RunnerDialog({ query, onClose, onRan }: any) {
                       </Button>
                     </div>
                   </div>
-                  <div className="overflow-x-auto border border-border rounded">
+                  <div className="overflow-auto border border-border rounded max-h-[55vh]">
                     <table className="w-full text-xs font-mono">
-                      <thead className="bg-background/80 border-b border-border">
-                        <tr>{result.cols.map((c: string) => <th key={c} className="text-left px-3 py-2 text-primary uppercase text-[10px]">{c}</th>)}</tr>
+                      <thead className="bg-background/90 border-b border-border sticky top-0">
+                        <tr>
+                          <th className="text-left px-2 py-2 text-muted-foreground uppercase text-[10px] w-10">#</th>
+                          {result.cols.map((c: string) => <th key={c} className="text-left px-3 py-2 text-primary uppercase text-[10px] whitespace-nowrap">{c}</th>)}
+                        </tr>
                       </thead>
                       <tbody>
-                        {result.rows.map((r: any, i: number) => (
-                          <tr key={i} className="border-b border-border/50 hover:bg-background/40">
-                            {result.cols.map((c: string) => <td key={c} className="px-3 py-1.5">{String(r[c])}</td>)}
+                        {result.rows.length === 0 ? (
+                          <tr><td colSpan={result.cols.length + 1} className="text-center py-6 text-muted-foreground">Consulta executada com sucesso — nenhum registro retornado.</td></tr>
+                        ) : result.rows.map((r: any, i: number) => (
+                          <tr key={i} className="border-b border-border/50 hover:bg-background/40 align-top">
+                            <td className="px-2 py-1.5 text-muted-foreground">{i + 1}</td>
+                            {result.cols.map((c: string) => {
+                              const v = r[c];
+                              const text = v == null ? "NULL" : typeof v === "object" ? JSON.stringify(v) : String(v);
+                              return <td key={c} className="px-3 py-1.5 max-w-[320px] truncate" title={text}>{text}</td>;
+                            })}
                           </tr>
                         ))}
                       </tbody>
