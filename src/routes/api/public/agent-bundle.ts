@@ -257,7 +257,9 @@ def cmd_ping_test() -> Dict[str, Any]:
             out["auth_ok"] = None
             out["db_error"] = msg
         out["latency_ms"] = int((time.time() - t0) * 1000)
-        raise RuntimeError(msg)
+        out["ok"] = False
+        out["error"] = msg
+        return out  # NÃO levanta — retorna o diagnóstico granular p/ a UI
 
     # 3) Query de teste
     try:
@@ -268,7 +270,12 @@ def cmd_ping_test() -> Dict[str, Any]:
     except Exception as e:
         out["test_query_ok"] = False
         out["query_error"] = str(e)
-        raise
+        out["ok"] = False
+        out["error"] = str(e)
+        try: con.close()
+        except: pass
+        out["latency_ms"] = int((time.time() - t0) * 1000)
+        return out
     finally:
         try: con.close()
         except: pass
@@ -276,6 +283,7 @@ def cmd_ping_test() -> Dict[str, Any]:
     out["latency_ms"] = int((time.time() - t0) * 1000)
     out["ok"] = True
     return out
+
 
 
 def cmd_network_test(payload: Dict[str, Any]) -> Dict[str, Any]:
