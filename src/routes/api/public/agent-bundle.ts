@@ -257,7 +257,9 @@ def cmd_ping_test() -> Dict[str, Any]:
             out["auth_ok"] = None
             out["db_error"] = msg
         out["latency_ms"] = int((time.time() - t0) * 1000)
-        raise RuntimeError(msg)
+        out["ok"] = False
+        out["error"] = msg
+        return out  # NÃO levanta — retorna o diagnóstico granular p/ a UI
 
     # 3) Query de teste
     try:
@@ -268,7 +270,12 @@ def cmd_ping_test() -> Dict[str, Any]:
     except Exception as e:
         out["test_query_ok"] = False
         out["query_error"] = str(e)
-        raise
+        out["ok"] = False
+        out["error"] = str(e)
+        try: con.close()
+        except: pass
+        out["latency_ms"] = int((time.time() - t0) * 1000)
+        return out
     finally:
         try: con.close()
         except: pass
@@ -276,6 +283,7 @@ def cmd_ping_test() -> Dict[str, Any]:
     out["latency_ms"] = int((time.time() - t0) * 1000)
     out["ok"] = True
     return out
+
 
 
 def cmd_network_test(payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -424,16 +432,26 @@ def main():
     register()
     last_sync = 0.0
     while True:
+        had_cmds = False
         try:
             cmds = heartbeat()
+            had_cmds = bool(cmds)
             for c in cmds: handle_command(c)
+            # Após processar comandos, envia heartbeat imediato para o Hub
+            # não marcar o agente como offline durante diagnósticos longos.
+            if had_cmds:
+                try: heartbeat()
+                except Exception: pass
             if time.time() - last_sync >= CFG["sync_interval"]:
                 do_sync(); last_sync = time.time()
         except KeyboardInterrupt:
             log.info("Encerrando agente."); break
         except Exception as e:
             log.error("loop principal: %s", e)
-        time.sleep(CFG["heartbeat_interval"])
+        # Se houve comandos, dorme menos para drenar a fila rapidamente
+        time.sleep(5 if had_cmds else CFG["heartbeat_interval"])
+
+
 
 
 if __name__ == "__main__":
