@@ -432,6 +432,7 @@ def main():
     register()
     last_sync = 0.0
     while True:
+        had_cmds = False
         try:
             cmds = heartbeat()
             had_cmds = bool(cmds)
@@ -448,7 +449,8 @@ def main():
         except Exception as e:
             log.error("loop principal: %s", e)
         # Se houve comandos, dorme menos para drenar a fila rapidamente
-        time.sleep(5 if 'had_cmds' in dir() and had_cmds else CFG["heartbeat_interval"])
+        time.sleep(5 if had_cmds else CFG["heartbeat_interval"])
+
 
 
 
