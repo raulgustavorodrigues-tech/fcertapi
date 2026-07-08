@@ -40,7 +40,7 @@ from typing import Any, Dict, List, Optional
 # ---------------------------------------------------------------------------
 # Constantes
 # ---------------------------------------------------------------------------
-AGENT_VERSION = "1.2.1"
+AGENT_VERSION = "1.2.2"
 SERVICE_NAME = "FireSyncAgent"
 SERVICE_DISPLAY = "FireSync LocalBridge Agent"
 SERVICE_DESC = (
@@ -334,12 +334,25 @@ def check_auto_update() -> None:
         if not r.ok:
             return
         info = r.json() or {}
-        latest = info.get("version") or ""
-        url    = info.get("installer_url") or ""
+        latest       = info.get("version") or ""
+        target_ver   = info.get("target_version") or latest
+        min_ver      = info.get("min_supported_version") or "0.0.0"
+        url          = info.get("installer_url") or ""
+        expected_sha = (info.get("installer_sha256") or "").strip().lower() or None
         if not latest or not url:
             return
-        if _version_tuple(latest) <= _version_tuple(CFG["version"]):
+
+        current = _version_tuple(CFG["version"])
+        # Rollout gradual: se target_version definido e agente já está >= target, ignora.
+        if _version_tuple(target_ver) <= current:
             return
+        if _version_tuple(latest) <= current:
+            return
+        # Sanidade: agente não pode ser mais antigo que min_supported_version
+        if current < _version_tuple(min_ver):
+            log.warning("Versão atual %s abaixo do mínimo suportado %s — atualização forçada",
+                        CFG["version"], min_ver)
+
         log.info("Nova versão disponível: %s (atual %s) — baixando de %s",
                  latest, CFG["version"], url)
         target = DATA_DIR / f"firesync-agent-setup-{latest}.exe"
@@ -348,6 +361,27 @@ def check_auto_update() -> None:
             with open(target, "wb") as f:
                 for chunk in dl.iter_content(chunk_size=1024 * 64):
                     if chunk: f.write(chunk)
+
+        # Validação de integridade — só executa se o SHA256 bater.
+        if expected_sha:
+            h = hashlib.sha256()
+            with open(target, "rb") as f:
+                for blk in iter(lambda: f.read(1024 * 64), b""):
+                    h.update(blk)
+            got = h.hexdigest().lower()
+            if got != expected_sha:
+                log.error("Auto-update ABORTADO: sha256 esperado=%s obtido=%s — arquivo removido",
+                          expected_sha, got)
+                try: target.unlink()
+                except Exception: pass
+                return
+            log.info("sha256 do instalador conferido (%s)", got[:12])
+        else:
+            log.warning("Auto-update sem installer_sha256 publicado — recusando execução por segurança")
+            try: target.unlink()
+            except Exception: pass
+            return
+
         log.info("Executando instalador silencioso: %s", target)
         # /VERYSILENT: Inno Setup. Ao concluir, o serviço se reinicia sozinho.
         subprocess.Popen(
