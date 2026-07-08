@@ -586,7 +586,7 @@ def do_sync() -> None:
             "tables": [{"table_name": t["name"], "record_count": t["row_count"]}
                        for t in tables_info],
         }
-        r = requests.post(CFG["remote"], headers=_headers(), json=payload, timeout=120)
+        r = _post_json(CFG["remote"], payload, timeout=120)
         log.info("sync: %s %s", r.status_code, r.text[:200])
     except Exception as e:
         log.error("sync falhou: %s", e)
