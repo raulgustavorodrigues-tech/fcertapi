@@ -21,6 +21,7 @@ const heartbeatSchema = z.object({
   agent_version: z.string().max(64).optional(),
   timestamp: z.string().optional(),
   tunnel_url: z.string().url().nullable().optional(),
+  queue_depth: z.number().int().min(0).optional(),
   system_info: z
     .object({
       cpu_percent: z.number().optional(),
