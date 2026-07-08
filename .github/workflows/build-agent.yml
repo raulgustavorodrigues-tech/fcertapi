@@ -1,0 +1,70 @@
+name: build-agent
+
+on:
+  push:
+    tags: ["agent-v*"]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Tag do release (ex: agent-v1.1.0)"
+        required: true
+        default: "agent-v1.1.0"
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          architecture: "x64"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install pyinstaller
+
+      - name: Build EXE (PyInstaller)
+        run: pyinstaller --clean --noconfirm firesync-agent.spec
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Build installer (Inno Setup)
+        run: iscc installer.iss
+
+      - name: Compute checksum
+        shell: pwsh
+        run: |
+          $file = "Output\firesync-agent-setup.exe"
+          $hash = (Get-FileHash $file -Algorithm SHA256).Hash
+          "$hash  firesync-agent-setup.exe" | Out-File -Encoding ascii Output\firesync-agent-setup.exe.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firesync-agent-setup
+          path: |
+            agent/Output/firesync-agent-setup.exe
+            agent/Output/firesync-agent-setup.exe.sha256
+            agent/dist/firesync-agent.exe
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/agent-v') || github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.release_tag || github.ref_name }}
+          name: FireSync Agent ${{ github.event.inputs.release_tag || github.ref_name }}
+          files: |
+            agent/Output/firesync-agent-setup.exe
+            agent/Output/firesync-agent-setup.exe.sha256
+            agent/dist/firesync-agent.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -362,6 +362,31 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
     }
   }
 
+  async function downloadInstaller() {
+    if (!db.agent_token) {
+      toast.error("Este banco não tem token. Edite o banco e gere/salve um token primeiro.");
+      return;
+    }
+    try {
+      toast.info("Gerando instalador Windows…");
+      const url = `/api/public/agent-installer?database_id=${encodeURIComponent(db.id)}&token=${encodeURIComponent(db.agent_token)}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(await res.text());
+      const blob = await res.blob();
+      const cd = res.headers.get("content-disposition") ?? "";
+      const m = /filename="?([^"]+)"?/i.exec(cd);
+      const filename = m?.[1] ?? `firesync-agent-${db.id}-installer.zip`;
+      const a = document.createElement("a");
+      const objUrl = URL.createObjectURL(blob);
+      a.href = objUrl; a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(objUrl);
+      toast.success("Instalador baixado — extraia e rode install.bat como Administrador");
+    } catch (e: any) {
+      toast.error(`Falha ao gerar instalador: ${e.message ?? e}`);
+    }
+  }
+
 
 
   const agent = Array.isArray(db.agents) ? db.agents[0] : db.agents;
@@ -442,8 +467,11 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
         <Button size="sm" variant="outline" onClick={copyConfig} title="Copiar .env do agente LocalBridge">
           <Copy className="h-3.5 w-3.5 mr-1" /> Copiar .env
         </Button>
-        <Button size="sm" onClick={downloadAgent} title="Baixar pacote ZIP do agente já configurado">
-          <Download className="h-3.5 w-3.5 mr-1" /> Baixar agente
+        <Button size="sm" onClick={downloadInstaller} title="Instalador Windows (.exe) — serviço nativo, sem Python, auto-start com o Windows">
+          <Download className="h-3.5 w-3.5 mr-1" /> Instalador Windows
+        </Button>
+        <Button size="sm" variant="outline" onClick={downloadAgent} title="Pacote Python (avançado)">
+          <Download className="h-3.5 w-3.5 mr-1" /> Agente Python
         </Button>
         <Button size="sm" variant="outline" onClick={downloadProbe} title="Baixar probe de diagnóstico (somente leitura) para levantar requisitos pendentes">
           <Download className="h-3.5 w-3.5 mr-1" /> Probe
