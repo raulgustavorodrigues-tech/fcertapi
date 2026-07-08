@@ -40,7 +40,7 @@ from typing import Any, Dict, List, Optional
 # ---------------------------------------------------------------------------
 # Constantes
 # ---------------------------------------------------------------------------
-AGENT_VERSION = "1.2.0"
+AGENT_VERSION = "1.2.1"
 SERVICE_NAME = "FireSyncAgent"
 SERVICE_DISPLAY = "FireSync LocalBridge Agent"
 SERVICE_DESC = (
@@ -111,6 +111,7 @@ CFG = {
     "log_level":           os.getenv("LOG_LEVEL", "INFO"),
     "auto_update":         os.getenv("AUTO_UPDATE", "1") == "1",
     "update_check_every":  int(os.getenv("UPDATE_CHECK_EVERY", "3600")),  # segundos
+    "max_queue_rows":      int(os.getenv("MAX_QUEUE_ROWS", "50000")),      # teto da fila offline
 }
 
 # Deriva endpoints v1.2 a partir do heartbeat, quando não configurados
@@ -223,9 +224,29 @@ def _queue_conn():
     return con
 
 
+def queue_depth() -> int:
+    try:
+        con = _queue_conn()
+        (n,) = con.execute("SELECT COUNT(*) FROM outbox").fetchone()
+        con.close()
+        return int(n or 0)
+    except Exception:
+        return 0
+
+
 def queue_put(kind: str, payload: Dict[str, Any]) -> None:
     try:
         con = _queue_conn()
+        # Aplica teto: se excedeu MAX_QUEUE_ROWS, descarta os mais antigos
+        cap = max(1000, int(CFG.get("max_queue_rows") or 50000))
+        (n,) = con.execute("SELECT COUNT(*) FROM outbox").fetchone()
+        if n and n >= cap:
+            excess = int(n) - cap + 1
+            con.execute(
+                "DELETE FROM outbox WHERE id IN (SELECT id FROM outbox ORDER BY id LIMIT ?)",
+                (excess,),
+            )
+            log.warning("queue_put: fila cheia (%s >= %s); %s descartados", n, cap, excess)
         con.execute(
             "INSERT INTO outbox (kind,payload,created_at) VALUES (?,?,?)",
             (kind, json.dumps(payload), datetime.now(timezone.utc).isoformat()),
@@ -359,6 +380,7 @@ def heartbeat() -> List[Dict[str, Any]]:
             "agent_uid":     CFG["agent_uid"],
             "agent_version": CFG["version"],
             "timestamp":     datetime.now(timezone.utc).isoformat(),
+            "queue_depth":   queue_depth(),
         })
         if r.ok:
             # oportunidade de drenar fila e checar update

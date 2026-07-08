@@ -185,6 +185,25 @@ Desinstalar:
           zipped.byteOffset + zipped.byteLength,
         ) as ArrayBuffer;
 
+        // Registra o download em agent_events (event_type='log')
+        // — trilha de auditoria de quem baixou o instalador e quando.
+        try {
+          await supabaseAdmin.from("agent_events").insert({
+            database_id: db.id,
+            event_type: "log",
+            level: "INFO",
+            message: `installer_download: ${folder}`,
+            context: {
+              action: "installer_download",
+              installer_url: installerUrl,
+              user_agent: request.headers.get("user-agent") ?? null,
+              ip: request.headers.get("x-forwarded-for")
+                ?? request.headers.get("cf-connecting-ip")
+                ?? null,
+            } as any,
+          });
+        } catch { /* auditoria não pode bloquear o download */ }
+
         return new Response(ab, {
           status: 200,
           headers: {

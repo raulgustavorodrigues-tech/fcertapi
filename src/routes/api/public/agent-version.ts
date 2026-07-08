@@ -26,13 +26,19 @@ export const Route = createFileRoute("/api/public/agent-version")({
         const changelog_url =
           process.env.AGENT_CHANGELOG_URL ??
           "https://github.com/firesync/agent/releases";
+        // sha256 hex do .exe publicado. Configurar via env a cada release.
+        // O agente pode validar o download antes de executar.
+        const installer_sha256 = process.env.AGENT_INSTALLER_SHA256 ?? null;
 
         return Response.json(
           {
             version,
             installer_url,
+            installer_sha256,
             changelog_url,
-            min_supported_version: "1.0.0",
+            min_supported_version: process.env.AGENT_MIN_SUPPORTED_VERSION ?? "1.0.0",
+            // rollout gradual: se definido, só agentes com versão >= target_version aplicam
+            target_version: process.env.AGENT_TARGET_VERSION ?? version,
             released_at: new Date().toISOString(),
           },
           { headers: { ...CORS, "Cache-Control": "public, max-age=60" } },

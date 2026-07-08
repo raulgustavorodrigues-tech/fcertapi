@@ -21,6 +21,7 @@ const heartbeatSchema = z.object({
   agent_version: z.string().max(64).optional(),
   timestamp: z.string().optional(),
   tunnel_url: z.string().url().nullable().optional(),
+  queue_depth: z.number().int().min(0).optional(),
   system_info: z
     .object({
       cpu_percent: z.number().optional(),
@@ -70,13 +71,19 @@ export const Route = createFileRoute("/api/public/heartbeat")({
           .eq("agent_uid", data.agent_uid)
           .maybeSingle();
 
+        // Consolida queue_depth dentro de system_info para não exigir schema change
+        const mergedSystemInfo = {
+          ...(data.system_info ?? {}),
+          ...(typeof data.queue_depth === "number" ? { queue_depth: data.queue_depth } : {}),
+        };
+
         const update = {
           last_heartbeat_at: now,
           status: "online",
           agent_version: data.agent_version ?? null,
           tunnel_url: data.tunnel_url ?? null,
           push_only: !data.tunnel_url,
-          system_info: (data.system_info ?? null) as any,
+          system_info: (Object.keys(mergedSystemInfo).length ? mergedSystemInfo : null) as any,
         };
 
         let pending: any[] = [];
