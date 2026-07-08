@@ -55,10 +55,10 @@ function Page() {
   const selectedDb = databases.find((d: any) => d.id === databaseId);
 
   const tables: any[] = useMemo(() => {
-    if (cacheRow?.tables && Array.isArray(cacheRow.tables) && cacheRow.tables.length > 0) {
+    if (cacheRow?.tables && Array.isArray(cacheRow.tables)) {
       return cacheRow.tables as any[];
     }
-    return MOCK_SCHEMA;
+    return [];
   }, [cacheRow]);
 
   const filteredTables = useMemo(() => {
