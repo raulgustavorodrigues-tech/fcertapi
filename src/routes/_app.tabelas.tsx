@@ -163,24 +163,34 @@ function Page() {
           <Card className="lg:col-span-1 p-4 bg-card border-border">
             <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
               Tabelas ({filteredTables.length})
-              {!cacheRow && <span className="ml-2 text-[10px] normal-case text-warning">(mock)</span>}
             </h3>
             <div className="space-y-1 max-h-[600px] overflow-y-auto">
-              {filteredTables.map((t: any) => (
-                <button
-                  key={t.name}
-                  onClick={() => setSelected(t)}
-                  className={`w-full text-left p-2.5 rounded border transition-colors font-mono text-xs cursor-pointer ${
-                    selected?.name === t.name ? "border-primary bg-primary/10 text-primary" : "border-border bg-background/40 hover:border-primary/40"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold truncate">{t.name}</span>
-                    {t.rows != null && <span className="text-[10px] text-muted-foreground">{Number(t.rows).toLocaleString("pt-BR")}</span>}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">{t.columns?.length ?? 0} colunas</div>
-                </button>
-              ))}
+              {filteredTables.length === 0 ? (
+                <div className="text-center py-8 px-3 border border-dashed border-border rounded">
+                  <p className="text-[11px] text-muted-foreground font-mono">
+                    {cacheRow ? "Nenhuma tabela encontrada." : "Nenhum schema em cache."}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Clique em <span className="text-primary">Recarregar schema</span> para solicitar ao agente.
+                  </p>
+                </div>
+              ) : (
+                filteredTables.map((t: any) => (
+                  <button
+                    key={t.name}
+                    onClick={() => setSelected(t)}
+                    className={`w-full text-left p-2.5 rounded border transition-colors font-mono text-xs cursor-pointer ${
+                      selected?.name === t.name ? "border-primary bg-primary/10 text-primary" : "border-border bg-background/40 hover:border-primary/40"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold truncate">{t.name}</span>
+                      {t.rows != null && <span className="text-[10px] text-muted-foreground">{Number(t.rows).toLocaleString("pt-BR")}</span>}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">{t.columns?.length ?? 0} colunas</div>
+                  </button>
+                ))
+              )}
             </div>
           </Card>
 
