@@ -224,9 +224,29 @@ def _queue_conn():
     return con
 
 
+def queue_depth() -> int:
+    try:
+        con = _queue_conn()
+        (n,) = con.execute("SELECT COUNT(*) FROM outbox").fetchone()
+        con.close()
+        return int(n or 0)
+    except Exception:
+        return 0
+
+
 def queue_put(kind: str, payload: Dict[str, Any]) -> None:
     try:
         con = _queue_conn()
+        # Aplica teto: se excedeu MAX_QUEUE_ROWS, descarta os mais antigos
+        cap = max(1000, int(CFG.get("max_queue_rows") or 50000))
+        (n,) = con.execute("SELECT COUNT(*) FROM outbox").fetchone()
+        if n and n >= cap:
+            excess = int(n) - cap + 1
+            con.execute(
+                "DELETE FROM outbox WHERE id IN (SELECT id FROM outbox ORDER BY id LIMIT ?)",
+                (excess,),
+            )
+            log.warning("queue_put: fila cheia (%s >= %s); %s descartados", n, cap, excess)
         con.execute(
             "INSERT INTO outbox (kind,payload,created_at) VALUES (?,?,?)",
             (kind, json.dumps(payload), datetime.now(timezone.utc).isoformat()),
