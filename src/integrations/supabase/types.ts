@@ -14,32 +14,62 @@ export type Database = {
   }
   public: {
     Tables: {
-      agent_logs: {
+      agent_events: {
         Row: {
           agent_id: string | null
           context: Json | null
           created_at: string
+          database_id: string | null
+          error_detail: string | null
+          event_type: string
           id: string
-          level: string
-          message: string
+          latency_ms: number | null
+          level: string | null
+          message: string | null
+          step: string | null
         }
         Insert: {
           agent_id?: string | null
           context?: Json | null
           created_at?: string
+          database_id?: string | null
+          error_detail?: string | null
+          event_type: string
           id?: string
-          level: string
-          message: string
+          latency_ms?: number | null
+          level?: string | null
+          message?: string | null
+          step?: string | null
         }
         Update: {
           agent_id?: string | null
           context?: Json | null
           created_at?: string
+          database_id?: string | null
+          error_detail?: string | null
+          event_type?: string
           id?: string
-          level?: string
-          message?: string
+          latency_ms?: number | null
+          level?: string | null
+          message?: string | null
+          step?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "agent_events_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_events_database_id_fkey"
+            columns: ["database_id"]
+            isOneToOne: false
+            referencedRelation: "databases"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       agent_token_history: {
         Row: {
@@ -222,44 +252,6 @@ export type Database = {
           state?: string | null
         }
         Relationships: []
-      }
-      connectivity_logs: {
-        Row: {
-          database_id: string | null
-          error_detail: string | null
-          id: string
-          latency_ms: number | null
-          result: string
-          step_failed: string | null
-          tested_at: string
-        }
-        Insert: {
-          database_id?: string | null
-          error_detail?: string | null
-          id?: string
-          latency_ms?: number | null
-          result: string
-          step_failed?: string | null
-          tested_at?: string
-        }
-        Update: {
-          database_id?: string | null
-          error_detail?: string | null
-          id?: string
-          latency_ms?: number | null
-          result?: string
-          step_failed?: string | null
-          tested_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "connectivity_logs_database_id_fkey"
-            columns: ["database_id"]
-            isOneToOne: false
-            referencedRelation: "databases"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       databases: {
         Row: {

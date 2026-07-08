@@ -263,11 +263,12 @@ function DatabaseCard({
 
     try {
       await supabase.from("databases").update({ status: failed ? "disconnected" : "connected" }).eq("id", db.id);
-      await supabase.from("connectivity_logs").insert({
+      await supabase.from("agent_events").insert({
         database_id: db.id,
+        event_type: "connectivity_test",
         latency_ms: failed ? 0 : totalLatency,
-        result: failed ? "error" : "success",
-        step_failed: stepFailed,
+        level: failed ? "error" : "success",
+        step: stepFailed,
         error_detail: errorDetail,
       });
     } catch {}

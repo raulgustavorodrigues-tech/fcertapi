@@ -92,12 +92,13 @@ function Page() {
   });
 
   const { data: logs = [] } = useQuery({
-    queryKey: ["connectivity_logs"],
+    queryKey: ["agent_events", "connectivity_test"],
     queryFn: async () => {
       const { data } = await supabase
-        .from("connectivity_logs")
+        .from("agent_events")
         .select("*, databases(name, companies(name))")
-        .order("tested_at", { ascending: false })
+        .eq("event_type", "connectivity_test")
+        .order("created_at", { ascending: false })
         .limit(20);
       return data ?? [];
     },
@@ -237,7 +238,7 @@ function Page() {
     setOverall({ ok, cause, latency });
     await persistResult(target, ok, latency, cause ?? null, errMsg ?? firstError?.detail ?? null);
 
-    qc.invalidateQueries({ queryKey: ["connectivity_logs"] });
+    qc.invalidateQueries({ queryKey: ["agent_events", "connectivity_test"] });
     qc.invalidateQueries({ queryKey: ["databases"] });
     ok ? toast.success(`Diagnóstico OK — ${latency}ms`) : toast.error(`Falha em: ${cause}`);
     setRunning(false);
@@ -260,10 +261,12 @@ function Page() {
     database_id: string, ok: boolean, latency: number,
     step_failed: string | null, error_detail: string | null,
   ) {
-    await supabase.from("connectivity_logs").insert({
-      database_id, latency_ms: latency,
-      result: ok ? "success" : "error",
-      step_failed: ok ? null : step_failed,
+    await supabase.from("agent_events").insert({
+      database_id,
+      event_type: "connectivity_test",
+      latency_ms: latency,
+      level: ok ? "success" : "error",
+      step: ok ? null : step_failed,
       error_detail,
     });
     await supabase.from("databases").update({ status: ok ? "connected" : "disconnected" }).eq("id", database_id);
@@ -353,14 +356,14 @@ function Page() {
             {logs.map((l: any) => (
               <div key={l.id} className="p-2.5 bg-background/60 border border-border rounded text-xs font-mono">
                 <div className="flex items-center justify-between mb-1">
-                  <Badge variant={l.result === "success" ? "success" : l.result === "error" ? "destructive" : "muted"}>
-                    {l.result.toUpperCase()}
+                  <Badge variant={l.level === "success" ? "success" : l.level === "error" ? "destructive" : "muted"}>
+                    {(l.level ?? "—").toString().toUpperCase()}
                   </Badge>
-                  <span className="text-muted-foreground text-[10px]">{formatRelative(l.tested_at)}</span>
+                  <span className="text-muted-foreground text-[10px]">{formatRelative(l.created_at)}</span>
                 </div>
                 <div className="text-foreground truncate">{l.databases?.name ?? "—"}</div>
                 <div className="text-muted-foreground text-[10px]">
-                  {l.latency_ms ?? 0}ms{l.step_failed ? ` · falhou em ${l.step_failed}` : ""}
+                  {l.latency_ms ?? 0}ms{l.step ? ` · falhou em ${l.step}` : ""}
                 </div>
                 {l.error_detail && <div className="text-destructive text-[10px] mt-1 truncate">{l.error_detail}</div>}
               </div>
