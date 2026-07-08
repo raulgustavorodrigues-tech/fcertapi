@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { verifyAgentSignature } from "@/lib/hmac.server";
 
 // Consolidated endpoint: replaces /api/public/logs + /api/public/command_result.
 // Accepts a single report from the agent containing any combination of:
@@ -11,7 +12,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-FireSync-Signature",
 };
 
 function err(status: number, code: string, message: string, details?: unknown) {
@@ -53,7 +54,8 @@ export const Route = createFileRoute("/api/public/agent-report")({
         if (!token) return err(401, "MISSING_TOKEN", "Authorization Bearer ausente");
 
         let body: unknown;
-        try { body = await request.json(); } catch { return err(400, "INVALID_JSON", "Body inválido"); }
+        const raw = await request.text();
+        try { body = JSON.parse(raw); } catch { return err(400, "INVALID_JSON", "Body inválido"); }
 
         const parsed = payloadSchema.safeParse(body);
         if (!parsed.success) {
@@ -69,6 +71,9 @@ export const Route = createFileRoute("/api/public/agent-report")({
           .maybeSingle();
         if (!db) return err(404, "AGENT_NOT_FOUND", "agent_uid não registrado");
         if (db.agent_token !== token) return err(401, "INVALID_TOKEN", "Token inválido");
+
+        const sig = verifyAgentSignature(request, raw, db.agent_token);
+        if (!sig.ok) return err(401, sig.code, sig.message);
 
         const { data: agent } = await supabaseAdmin
           .from("agents")

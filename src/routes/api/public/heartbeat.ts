@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { verifyAgentSignature } from "@/lib/hmac.server";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-FireSync-Signature",
 };
 
 function err(status: number, code: string, message: string, details?: unknown) {
@@ -38,8 +39,9 @@ export const Route = createFileRoute("/api/public/heartbeat")({
         const token = (request.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
         if (!token) return err(401, "MISSING_TOKEN", "Authorization Bearer ausente");
 
+        const raw = await request.text();
         let body: unknown;
-        try { body = await request.json(); } catch { return err(400, "INVALID_JSON", "Body não é JSON válido"); }
+        try { body = JSON.parse(raw); } catch { return err(400, "INVALID_JSON", "Body não é JSON válido"); }
 
         const parsed = heartbeatSchema.safeParse(body);
         if (!parsed.success) {
@@ -56,6 +58,9 @@ export const Route = createFileRoute("/api/public/heartbeat")({
 
         if (!db) return err(404, "AGENT_NOT_FOUND", `agent_uid "${data.agent_uid}" não registrado`);
         if (!db.agent_token || db.agent_token !== token) return err(401, "INVALID_TOKEN", "Token inválido");
+
+        const sig = verifyAgentSignature(request, raw, db.agent_token);
+        if (!sig.ok) return err(401, sig.code, sig.message);
 
         const now = new Date().toISOString();
 
