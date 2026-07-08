@@ -35,8 +35,9 @@ export const Route = createFileRoute("/api/public/command_result")({
         const token = (request.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
         if (!token) return err(401, "MISSING_TOKEN", "Authorization Bearer ausente");
 
+        const rawBody = await request.text();
         let body: unknown;
-        try { body = await request.json(); } catch { return err(400, "INVALID_JSON", "Body inválido"); }
+        try { body = JSON.parse(rawBody); } catch { return err(400, "INVALID_JSON", "Body inválido"); }
 
         const parsed = resultSchema.safeParse(body);
         if (!parsed.success) {
@@ -52,6 +53,9 @@ export const Route = createFileRoute("/api/public/command_result")({
           .maybeSingle();
         if (!db) return err(404, "AGENT_NOT_FOUND", "agent_uid não registrado");
         if (db.agent_token !== token) return err(401, "INVALID_TOKEN", "Token inválido");
+
+        const sig = verifyAgentSignature(request, rawBody, db.agent_token);
+        if (!sig.ok) return err(401, sig.code, sig.message);
 
         const now = new Date().toISOString();
         const { error: updErr } = await supabaseAdmin
