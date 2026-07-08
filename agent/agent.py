@@ -160,36 +160,182 @@ except ImportError:
 
 
 # ---------------------------------------------------------------------------
-# Cliente HTTP + Firebird
+# HMAC de corpo (X-FireSync-Signature) — chave = agent_token
 # ---------------------------------------------------------------------------
-def _headers() -> Dict[str, str]:
-    return {
+import hashlib
+import hmac as _hmac
+
+
+def _sign(body: str) -> str:
+    tok = (CFG["token"] or "").encode("utf-8")
+    mac = _hmac.new(tok, body.encode("utf-8"), hashlib.sha256).hexdigest()
+    return f"sha256={mac}"
+
+
+def _headers(body: Optional[str] = None) -> Dict[str, str]:
+    h = {
         "Authorization": f"Bearer {CFG['token']}",
         "Content-Type":  "application/json",
         "User-Agent":    f"firesync-agent/{CFG['version']}",
     }
+    if body is not None and CFG["token"]:
+        h["X-FireSync-Signature"] = _sign(body)
+    return h
 
 
-def _db_connect():
-    if fdb is None:
-        raise RuntimeError("Driver Firebird (fdb) não disponível neste build.")
-    dsn = f"{CFG['db_host']}/{CFG['db_port']}:{CFG['db_path']}"
-    return fdb.connect(
-        dsn=dsn,
-        user=CFG["db_user"],
-        password=CFG["db_pass"],
-        charset=CFG["db_charset"],
+def _post_json(url: str, payload: Dict[str, Any], timeout: int = 15):
+    """POST assinado com HMAC do corpo cru."""
+    body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
+    return requests.post(url, data=body.encode("utf-8"), headers=_headers(body), timeout=timeout)
+
+
+# ---------------------------------------------------------------------------
+# Fila offline (SQLite) — persiste logs/resultados quando o hub está fora
+# ---------------------------------------------------------------------------
+import sqlite3
+
+_QUEUE_DB = DATA_DIR / "queue.sqlite"
+
+
+def _queue_conn():
+    con = sqlite3.connect(str(_QUEUE_DB))
+    con.execute(
+        "CREATE TABLE IF NOT EXISTS outbox ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "kind TEXT NOT NULL,"      # 'log' | 'result'
+        "payload TEXT NOT NULL,"   # JSON serializado
+        "created_at TEXT NOT NULL,"
+        "attempts INTEGER NOT NULL DEFAULT 0"
+        ")"
     )
+    return con
 
 
+def queue_put(kind: str, payload: Dict[str, Any]) -> None:
+    try:
+        con = _queue_conn()
+        con.execute(
+            "INSERT INTO outbox (kind,payload,created_at) VALUES (?,?,?)",
+            (kind, json.dumps(payload), datetime.now(timezone.utc).isoformat()),
+        )
+        con.commit(); con.close()
+    except Exception as e:
+        log.error("queue_put falhou: %s", e)
+
+
+def queue_flush(max_batch: int = 100) -> int:
+    """Tenta reenviar itens pendentes via /agent-report. Retorna nº enviados."""
+    if not CFG["report_url"]:
+        return 0
+    try:
+        con = _queue_conn()
+        rows = con.execute(
+            "SELECT id,kind,payload FROM outbox ORDER BY id LIMIT ?", (max_batch,)
+        ).fetchall()
+    except Exception as e:
+        log.error("queue_flush leitura: %s", e)
+        return 0
+    if not rows:
+        try: con.close()
+        except Exception: pass
+        return 0
+
+    logs_batch: List[Dict[str, Any]] = []
+    results_batch: List[Dict[str, Any]] = []
+    ids: List[int] = []
+    for rid, kind, raw_payload in rows:
+        try:
+            obj = json.loads(raw_payload)
+        except Exception:
+            ids.append(rid); continue
+        (logs_batch if kind == "log" else results_batch).append(obj)
+        ids.append(rid)
+
+    try:
+        r = _post_json(CFG["report_url"], {
+            "agent_uid": CFG["agent_uid"],
+            **({"logs": logs_batch} if logs_batch else {}),
+            **({"results": results_batch} if results_batch else {}),
+        }, timeout=30)
+        if not r.ok:
+            log.warning("queue_flush hub respondeu %s: %s", r.status_code, r.text[:200])
+            con.close()
+            return 0
+    except Exception as e:
+        log.warning("queue_flush envio: %s", e)
+        con.close()
+        return 0
+
+    try:
+        con.executemany("DELETE FROM outbox WHERE id=?", [(i,) for i in ids])
+        con.commit()
+    finally:
+        con.close()
+    log.info("queue_flush: %s itens enviados (%s logs, %s results)",
+             len(ids), len(logs_batch), len(results_batch))
+    return len(ids)
+
+
+# ---------------------------------------------------------------------------
+# Auto-update (checa /agent-version e dispara o instalador Inno silencioso)
+# ---------------------------------------------------------------------------
+_LAST_UPDATE_CHECK = 0.0
+
+
+def _version_tuple(v: str) -> tuple:
+    try:
+        return tuple(int(x) for x in v.split(".")[:3])
+    except Exception:
+        return (0, 0, 0)
+
+
+def check_auto_update() -> None:
+    global _LAST_UPDATE_CHECK
+    if not CFG["auto_update"] or not CFG["version_url"]:
+        return
+    if time.time() - _LAST_UPDATE_CHECK < CFG["update_check_every"]:
+        return
+    _LAST_UPDATE_CHECK = time.time()
+    try:
+        r = requests.get(CFG["version_url"], timeout=10)
+        if not r.ok:
+            return
+        info = r.json() or {}
+        latest = info.get("version") or ""
+        url    = info.get("installer_url") or ""
+        if not latest or not url:
+            return
+        if _version_tuple(latest) <= _version_tuple(CFG["version"]):
+            return
+        log.info("Nova versão disponível: %s (atual %s) — baixando de %s",
+                 latest, CFG["version"], url)
+        target = DATA_DIR / f"firesync-agent-setup-{latest}.exe"
+        with requests.get(url, stream=True, timeout=300) as dl:
+            dl.raise_for_status()
+            with open(target, "wb") as f:
+                for chunk in dl.iter_content(chunk_size=1024 * 64):
+                    if chunk: f.write(chunk)
+        log.info("Executando instalador silencioso: %s", target)
+        # /VERYSILENT: Inno Setup. Ao concluir, o serviço se reinicia sozinho.
+        subprocess.Popen(
+            [str(target), "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"],
+            close_fds=True,
+        )
+    except Exception as e:
+        log.warning("check_auto_update: %s", e)
+
+
+# ---------------------------------------------------------------------------
+# Chamadas ao hub (com fila offline)
+# ---------------------------------------------------------------------------
 def register() -> None:
     try:
-        r = requests.post(CFG["register"], headers=_headers(), json={
+        r = _post_json(CFG["register"], {
             "agent_uid":     CFG["agent_uid"],
             "agent_version": CFG["version"],
             "alias":         CFG["alias"],
             "hostname":      socket.gethostname(),
-        }, timeout=15)
+        })
         log.info("register: %s %s", r.status_code, r.text[:200])
     except Exception as e:
         log.error("register falhou: %s", e)
@@ -197,12 +343,15 @@ def register() -> None:
 
 def heartbeat() -> List[Dict[str, Any]]:
     try:
-        r = requests.post(CFG["heartbeat"], headers=_headers(), json={
+        r = _post_json(CFG["heartbeat"], {
             "agent_uid":     CFG["agent_uid"],
             "agent_version": CFG["version"],
             "timestamp":     datetime.now(timezone.utc).isoformat(),
-        }, timeout=15)
+        })
         if r.ok:
+            # oportunidade de drenar fila e checar update
+            queue_flush()
+            check_auto_update()
             return (r.json() or {}).get("pending_commands", []) or []
     except Exception as e:
         log.warning("heartbeat falhou: %s", e)
@@ -212,19 +361,30 @@ def heartbeat() -> List[Dict[str, Any]]:
 def post_result(command_id: str, command_type: str, status: str,
                 result: Any = None, error: Optional[str] = None,
                 duration_ms: int = 0) -> None:
+    payload = {
+        "command_id":    command_id,
+        "command_type":  command_type,
+        "status":        status,
+        "result":        result,
+        "error_message": error,
+        "duration_ms":   duration_ms,
+        "completed_at":  datetime.now(timezone.utc).isoformat(),
+    }
+    # Preferimos o endpoint consolidado (v1.2+); fallback para o legado.
     try:
-        requests.post(CFG["command_result"], headers=_headers(), json={
-            "agent_uid":     CFG["agent_uid"],
-            "command_id":    command_id,
-            "command_type":  command_type,
-            "status":        status,
-            "result":        result,
-            "error_message": error,
-            "duration_ms":   duration_ms,
-            "completed_at":  datetime.now(timezone.utc).isoformat(),
-        }, timeout=30)
+        if CFG["report_url"]:
+            r = _post_json(CFG["report_url"], {
+                "agent_uid": CFG["agent_uid"],
+                "results": [payload],
+            }, timeout=30)
+        else:
+            r = _post_json(CFG["command_result"],
+                           {"agent_uid": CFG["agent_uid"], **payload}, timeout=30)
+        if not r.ok:
+            raise RuntimeError(f"HTTP {r.status_code}: {r.text[:200]}")
     except Exception as e:
-        log.error("post_result falhou: %s", e)
+        log.error("post_result falhou (enfileirando): %s", e)
+        queue_put("result", payload)
 
 
 # ---------------------------------------------------------------------------
