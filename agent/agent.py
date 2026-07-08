@@ -40,7 +40,7 @@ from typing import Any, Dict, List, Optional
 # ---------------------------------------------------------------------------
 # Constantes
 # ---------------------------------------------------------------------------
-AGENT_VERSION = "1.1.0"
+AGENT_VERSION = "1.2.0"
 SERVICE_NAME = "FireSyncAgent"
 SERVICE_DISPLAY = "FireSync LocalBridge Agent"
 SERVICE_DESC = (
@@ -93,6 +93,8 @@ CFG = {
     "command_result":      os.getenv("COMMAND_RESULT_ENDPOINT"),
     "register":            os.getenv("REGISTER_ENDPOINT"),
     "logs_url":            os.getenv("LOGS_ENDPOINT"),
+    "report_url":          os.getenv("REPORT_ENDPOINT"),   # /api/public/agent-report (v1.2+)
+    "version_url":         os.getenv("VERSION_ENDPOINT"),  # /api/public/agent-version (v1.2+)
     "token":               os.getenv("API_TOKEN"),
     "agent_uid":           os.getenv("AGENT_UID"),
     "alias":               os.getenv("AGENT_ALIAS"),
@@ -107,7 +109,15 @@ CFG = {
     "heartbeat_interval":  int(os.getenv("HEARTBEAT_INTERVAL", "30")),
     "sync_tables":         os.getenv("SYNC_TABLES", "ALL"),
     "log_level":           os.getenv("LOG_LEVEL", "INFO"),
+    "auto_update":         os.getenv("AUTO_UPDATE", "1") == "1",
+    "update_check_every":  int(os.getenv("UPDATE_CHECK_EVERY", "3600")),  # segundos
 }
+
+# Deriva endpoints v1.2 a partir do heartbeat, quando não configurados
+if CFG["heartbeat"]:
+    _base = CFG["heartbeat"].rsplit("/", 1)[0]
+    CFG["report_url"]  = CFG["report_url"]  or f"{_base}/agent-report"
+    CFG["version_url"] = CFG["version_url"] or f"{_base}/agent-version"
 
 
 # ---------------------------------------------------------------------------
