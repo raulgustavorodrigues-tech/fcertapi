@@ -92,12 +92,13 @@ function Page() {
   });
 
   const { data: logs = [] } = useQuery({
-    queryKey: ["connectivity_logs"],
+    queryKey: ["agent_events", "connectivity_test"],
     queryFn: async () => {
       const { data } = await supabase
-        .from("connectivity_logs")
+        .from("agent_events")
         .select("*, databases(name, companies(name))")
-        .order("tested_at", { ascending: false })
+        .eq("event_type", "connectivity_test")
+        .order("created_at", { ascending: false })
         .limit(20);
       return data ?? [];
     },
