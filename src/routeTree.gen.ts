@@ -19,6 +19,7 @@ import { Route as AppEmpresasRouteImport } from './routes/_app.empresas'
 import { Route as AppConfiguracoesRouteImport } from './routes/_app.configuracoes'
 import { Route as AppConectividadeRouteImport } from './routes/_app.conectividade'
 import { Route as AppBancosRouteImport } from './routes/_app.bancos'
+import { Route as AppAcessosRouteImport } from './routes/_app.acessos'
 import { Route as ApiPublicSyncRouteImport } from './routes/api/public/sync'
 import { Route as ApiPublicRegisterRouteImport } from './routes/api/public/register'
 import { Route as ApiPublicLogsRouteImport } from './routes/api/public/logs'
@@ -79,6 +80,11 @@ const AppBancosRoute = AppBancosRouteImport.update({
   path: '/bancos',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAcessosRoute = AppAcessosRouteImport.update({
+  id: '/acessos',
+  path: '/acessos',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiPublicSyncRoute = ApiPublicSyncRouteImport.update({
   id: '/api/public/sync',
   path: '/api/public/sync',
@@ -133,6 +139,7 @@ const ApiPublicAgentBundleRoute = ApiPublicAgentBundleRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
+  '/acessos': typeof AppAcessosRoute
   '/bancos': typeof AppBancosRoute
   '/conectividade': typeof AppConectividadeRoute
   '/configuracoes': typeof AppConfiguracoesRoute
@@ -153,6 +160,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
+  '/acessos': typeof AppAcessosRoute
   '/bancos': typeof AppBancosRoute
   '/conectividade': typeof AppConectividadeRoute
   '/configuracoes': typeof AppConfiguracoesRoute
@@ -176,6 +184,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/_app/acessos': typeof AppAcessosRoute
   '/_app/bancos': typeof AppBancosRoute
   '/_app/conectividade': typeof AppConectividadeRoute
   '/_app/configuracoes': typeof AppConfiguracoesRoute
@@ -200,6 +209,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/acessos'
     | '/bancos'
     | '/conectividade'
     | '/configuracoes'
@@ -220,6 +230,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
+    | '/acessos'
     | '/bancos'
     | '/conectividade'
     | '/configuracoes'
@@ -242,6 +253,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_app'
     | '/login'
+    | '/_app/acessos'
     | '/_app/bancos'
     | '/_app/conectividade'
     | '/_app/configuracoes'
@@ -349,6 +361,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppBancosRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/acessos': {
+      id: '/_app/acessos'
+      path: '/acessos'
+      fullPath: '/acessos'
+      preLoaderRoute: typeof AppAcessosRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/public/sync': {
       id: '/api/public/sync'
       path: '/api/public/sync'
@@ -423,6 +442,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppAcessosRoute: typeof AppAcessosRoute
   AppBancosRoute: typeof AppBancosRoute
   AppConectividadeRoute: typeof AppConectividadeRoute
   AppConfiguracoesRoute: typeof AppConfiguracoesRoute
@@ -434,6 +454,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAcessosRoute: AppAcessosRoute,
   AppBancosRoute: AppBancosRoute,
   AppConectividadeRoute: AppConectividadeRoute,
   AppConfiguracoesRoute: AppConfiguracoesRoute,
