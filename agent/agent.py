@@ -380,6 +380,7 @@ def heartbeat() -> List[Dict[str, Any]]:
             "agent_uid":     CFG["agent_uid"],
             "agent_version": CFG["version"],
             "timestamp":     datetime.now(timezone.utc).isoformat(),
+            "queue_depth":   queue_depth(),
         })
         if r.ok:
             # oportunidade de drenar fila e checar update
