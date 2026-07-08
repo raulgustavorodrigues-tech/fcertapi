@@ -111,6 +111,7 @@ CFG = {
     "log_level":           os.getenv("LOG_LEVEL", "INFO"),
     "auto_update":         os.getenv("AUTO_UPDATE", "1") == "1",
     "update_check_every":  int(os.getenv("UPDATE_CHECK_EVERY", "3600")),  # segundos
+    "max_queue_rows":      int(os.getenv("MAX_QUEUE_ROWS", "50000")),      # teto da fila offline
 }
 
 # Deriva endpoints v1.2 a partir do heartbeat, quando não configurados
