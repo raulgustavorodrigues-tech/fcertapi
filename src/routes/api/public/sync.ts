@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { verifyAgentSignature } from "@/lib/hmac.server";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -119,6 +120,9 @@ export const Route = createFileRoute("/api/public/sync")({
         if (!db) return err(404, "AGENT_NOT_FOUND", `agent_uid "${payload.agent_uid}" não está registrado`);
         if (!db.agent_token) return err(401, "TOKEN_NOT_CONFIGURED", "Agente não possui token configurado");
         if (db.agent_token !== token) return err(401, "INVALID_TOKEN", "Token inválido ou revogado");
+
+        const sig = verifyAgentSignature(request, raw, db.agent_token);
+        if (!sig.ok) return err(401, sig.code, sig.message);
 
         const totalRecords = payload.tables.reduce((s, t) => s + (t.record_count ?? t.records?.length ?? 0), 0);
         const startedAt = payload.timestamp ?? new Date().toISOString();

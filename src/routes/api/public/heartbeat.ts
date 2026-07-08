@@ -59,6 +59,9 @@ export const Route = createFileRoute("/api/public/heartbeat")({
         if (!db) return err(404, "AGENT_NOT_FOUND", `agent_uid "${data.agent_uid}" não registrado`);
         if (!db.agent_token || db.agent_token !== token) return err(401, "INVALID_TOKEN", "Token inválido");
 
+        const sig = verifyAgentSignature(request, raw, db.agent_token);
+        if (!sig.ok) return err(401, sig.code, sig.message);
+
         const now = new Date().toISOString();
 
         const { data: existing } = await supabaseAdmin
