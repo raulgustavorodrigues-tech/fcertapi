@@ -17,26 +17,8 @@ import { SchemaEditorDialog } from "@/components/conecta/SchemaEditorDialog";
 
 export const Route = createFileRoute("/_app/tabelas")({ component: Page });
 
-const MOCK_SCHEMA = [
-  { name: "CLIENTES", rows: 12450, columns: [
-    { name: "ID", type: "INTEGER", pk: true, nullable: false },
-    { name: "NOME", type: "VARCHAR(120)", pk: false, nullable: false },
-    { name: "CPF_CNPJ", type: "VARCHAR(18)", pk: false, nullable: true },
-    { name: "EMAIL", type: "VARCHAR(80)", pk: false, nullable: true },
-  ]},
-  { name: "PRODUTOS", rows: 3287, columns: [
-    { name: "ID", type: "INTEGER", pk: true, nullable: false },
-    { name: "CODIGO", type: "VARCHAR(20)", pk: false, nullable: false },
-    { name: "DESCRICAO", type: "VARCHAR(200)", pk: false, nullable: false },
-    { name: "PRECO_VENDA", type: "NUMERIC(15,2)", pk: false, nullable: false },
-  ]},
-  { name: "VENDAS", rows: 89234, columns: [
-    { name: "ID", type: "INTEGER", pk: true, nullable: false },
-    { name: "DATA", type: "DATE", pk: false, nullable: false },
-    { name: "ID_CLIENTE", type: "INTEGER", pk: false, nullable: false },
-    { name: "TOTAL", type: "NUMERIC(15,2)", pk: false, nullable: false },
-  ]},
-];
+// MOCK_SCHEMA removido — o schema agora vem exclusivamente de schema_cache
+// (populado pelo comando list_tables enviado ao agente).
 
 function Page() {
   const qc = useQueryClient();
@@ -73,10 +55,10 @@ function Page() {
   const selectedDb = databases.find((d: any) => d.id === databaseId);
 
   const tables: any[] = useMemo(() => {
-    if (cacheRow?.tables && Array.isArray(cacheRow.tables) && cacheRow.tables.length > 0) {
+    if (cacheRow?.tables && Array.isArray(cacheRow.tables)) {
       return cacheRow.tables as any[];
     }
-    return MOCK_SCHEMA;
+    return [];
   }, [cacheRow]);
 
   const filteredTables = useMemo(() => {
@@ -181,24 +163,34 @@ function Page() {
           <Card className="lg:col-span-1 p-4 bg-card border-border">
             <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
               Tabelas ({filteredTables.length})
-              {!cacheRow && <span className="ml-2 text-[10px] normal-case text-warning">(mock)</span>}
             </h3>
             <div className="space-y-1 max-h-[600px] overflow-y-auto">
-              {filteredTables.map((t: any) => (
-                <button
-                  key={t.name}
-                  onClick={() => setSelected(t)}
-                  className={`w-full text-left p-2.5 rounded border transition-colors font-mono text-xs cursor-pointer ${
-                    selected?.name === t.name ? "border-primary bg-primary/10 text-primary" : "border-border bg-background/40 hover:border-primary/40"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold truncate">{t.name}</span>
-                    {t.rows != null && <span className="text-[10px] text-muted-foreground">{Number(t.rows).toLocaleString("pt-BR")}</span>}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">{t.columns?.length ?? 0} colunas</div>
-                </button>
-              ))}
+              {filteredTables.length === 0 ? (
+                <div className="text-center py-8 px-3 border border-dashed border-border rounded">
+                  <p className="text-[11px] text-muted-foreground font-mono">
+                    {cacheRow ? "Nenhuma tabela encontrada." : "Nenhum schema em cache."}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Clique em <span className="text-primary">Recarregar schema</span> para solicitar ao agente.
+                  </p>
+                </div>
+              ) : (
+                filteredTables.map((t: any) => (
+                  <button
+                    key={t.name}
+                    onClick={() => setSelected(t)}
+                    className={`w-full text-left p-2.5 rounded border transition-colors font-mono text-xs cursor-pointer ${
+                      selected?.name === t.name ? "border-primary bg-primary/10 text-primary" : "border-border bg-background/40 hover:border-primary/40"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold truncate">{t.name}</span>
+                      {t.rows != null && <span className="text-[10px] text-muted-foreground">{Number(t.rows).toLocaleString("pt-BR")}</span>}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">{t.columns?.length ?? 0} colunas</div>
+                  </button>
+                ))
+              )}
             </div>
           </Card>
 
