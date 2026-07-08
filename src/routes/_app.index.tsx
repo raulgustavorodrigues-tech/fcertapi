@@ -603,11 +603,12 @@ function AgentHealthSection({ agents, loading }: { agents: any[]; loading: boole
         <Badge variant="muted">{loading ? "…" : `${total} registrados`}</Badge>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
         <HealthStat icon={<DatabaseIcon className="h-4 w-4" />} label="Total" value={total} loading={loading} tone="muted" />
         <HealthStat icon={<Wifi className="h-4 w-4" />} label="Online agora" value={online} loading={loading} tone="success" />
         <HealthStat icon={<Clock className="h-4 w-4" />} label="Comandos travados >2min" value={stuck} loading={loading} tone="warning" />
         <HealthStat icon={<WifiOff className="h-4 w-4" />} label="Offline (>5min)" value={offline} loading={loading} tone="destructive" />
+        <HealthStat icon={<HeartPulse className="h-4 w-4" />} label="Fila offline (máx)" value={queueMax} loading={loading} tone={queueTone} />
       </div>
 
       {!loading && alertAgents.length > 0 && (
