@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { verifyAgentSignature } from "@/lib/hmac.server";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
