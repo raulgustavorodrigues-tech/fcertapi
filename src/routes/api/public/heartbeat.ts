@@ -6,7 +6,7 @@ import { verifyAgentSignature } from "@/lib/hmac.server";
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-FireSync-Signature",
 };
 
 function err(status: number, code: string, message: string, details?: unknown) {
