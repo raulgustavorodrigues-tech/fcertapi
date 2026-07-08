@@ -53,14 +53,16 @@ export const Route = createFileRoute("/api/public/logs")({
           .maybeSingle();
 
         const rows = data.logs.map((l) => ({
+          database_id: db.id,
           agent_id: agent?.id ?? null,
+          event_type: "log" as const,
           level: l.level,
           message: l.message,
           context: (l.context ?? null) as any,
           created_at: l.timestamp ?? new Date().toISOString(),
         }));
 
-        const { error } = await supabaseAdmin.from("agent_logs").insert(rows);
+        const { error } = await supabaseAdmin.from("agent_events").insert(rows);
         if (error) return err(500, "DB_ERROR", "Falha ao gravar logs");
 
         return Response.json({ success: true, ingested: rows.length }, { headers: CORS });
