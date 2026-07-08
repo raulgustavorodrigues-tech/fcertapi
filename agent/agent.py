@@ -189,6 +189,18 @@ def _post_json(url: str, payload: Dict[str, Any], timeout: int = 15):
     return requests.post(url, data=body.encode("utf-8"), headers=_headers(body), timeout=timeout)
 
 
+def _db_connect():
+    if fdb is None:
+        raise RuntimeError("Driver Firebird (fdb) não disponível neste build.")
+    dsn = f"{CFG['db_host']}/{CFG['db_port']}:{CFG['db_path']}"
+    return fdb.connect(
+        dsn=dsn,
+        user=CFG["db_user"],
+        password=CFG["db_pass"],
+        charset=CFG["db_charset"],
+    )
+
+
 # ---------------------------------------------------------------------------
 # Fila offline (SQLite) — persiste logs/resultados quando o hub está fora
 # ---------------------------------------------------------------------------
