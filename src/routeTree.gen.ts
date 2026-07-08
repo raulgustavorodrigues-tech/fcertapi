@@ -24,6 +24,7 @@ import { Route as ApiPublicRegisterRouteImport } from './routes/api/public/regis
 import { Route as ApiPublicLogsRouteImport } from './routes/api/public/logs'
 import { Route as ApiPublicHeartbeatRouteImport } from './routes/api/public/heartbeat'
 import { Route as ApiPublicCommand_resultRouteImport } from './routes/api/public/command_result'
+import { Route as ApiPublicAgentVersionRouteImport } from './routes/api/public/agent-version'
 import { Route as ApiPublicAgentReportRouteImport } from './routes/api/public/agent-report'
 import { Route as ApiPublicAgentProbeRouteImport } from './routes/api/public/agent-probe'
 import { Route as ApiPublicAgentInstallerRouteImport } from './routes/api/public/agent-installer'
@@ -103,6 +104,11 @@ const ApiPublicCommand_resultRoute = ApiPublicCommand_resultRouteImport.update({
   path: '/api/public/command_result',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAgentVersionRoute = ApiPublicAgentVersionRouteImport.update({
+  id: '/api/public/agent-version',
+  path: '/api/public/agent-version',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicAgentReportRoute = ApiPublicAgentReportRouteImport.update({
   id: '/api/public/agent-report',
   path: '/api/public/agent-report',
@@ -138,6 +144,7 @@ export interface FileRoutesByFullPath {
   '/api/public/agent-installer': typeof ApiPublicAgentInstallerRoute
   '/api/public/agent-probe': typeof ApiPublicAgentProbeRoute
   '/api/public/agent-report': typeof ApiPublicAgentReportRoute
+  '/api/public/agent-version': typeof ApiPublicAgentVersionRoute
   '/api/public/command_result': typeof ApiPublicCommand_resultRoute
   '/api/public/heartbeat': typeof ApiPublicHeartbeatRoute
   '/api/public/logs': typeof ApiPublicLogsRoute
@@ -158,6 +165,7 @@ export interface FileRoutesByTo {
   '/api/public/agent-installer': typeof ApiPublicAgentInstallerRoute
   '/api/public/agent-probe': typeof ApiPublicAgentProbeRoute
   '/api/public/agent-report': typeof ApiPublicAgentReportRoute
+  '/api/public/agent-version': typeof ApiPublicAgentVersionRoute
   '/api/public/command_result': typeof ApiPublicCommand_resultRoute
   '/api/public/heartbeat': typeof ApiPublicHeartbeatRoute
   '/api/public/logs': typeof ApiPublicLogsRoute
@@ -180,6 +188,7 @@ export interface FileRoutesById {
   '/api/public/agent-installer': typeof ApiPublicAgentInstallerRoute
   '/api/public/agent-probe': typeof ApiPublicAgentProbeRoute
   '/api/public/agent-report': typeof ApiPublicAgentReportRoute
+  '/api/public/agent-version': typeof ApiPublicAgentVersionRoute
   '/api/public/command_result': typeof ApiPublicCommand_resultRoute
   '/api/public/heartbeat': typeof ApiPublicHeartbeatRoute
   '/api/public/logs': typeof ApiPublicLogsRoute
@@ -202,6 +211,7 @@ export interface FileRouteTypes {
     | '/api/public/agent-installer'
     | '/api/public/agent-probe'
     | '/api/public/agent-report'
+    | '/api/public/agent-version'
     | '/api/public/command_result'
     | '/api/public/heartbeat'
     | '/api/public/logs'
@@ -222,6 +232,7 @@ export interface FileRouteTypes {
     | '/api/public/agent-installer'
     | '/api/public/agent-probe'
     | '/api/public/agent-report'
+    | '/api/public/agent-version'
     | '/api/public/command_result'
     | '/api/public/heartbeat'
     | '/api/public/logs'
@@ -243,6 +254,7 @@ export interface FileRouteTypes {
     | '/api/public/agent-installer'
     | '/api/public/agent-probe'
     | '/api/public/agent-report'
+    | '/api/public/agent-version'
     | '/api/public/command_result'
     | '/api/public/heartbeat'
     | '/api/public/logs'
@@ -257,6 +269,7 @@ export interface RootRouteChildren {
   ApiPublicAgentInstallerRoute: typeof ApiPublicAgentInstallerRoute
   ApiPublicAgentProbeRoute: typeof ApiPublicAgentProbeRoute
   ApiPublicAgentReportRoute: typeof ApiPublicAgentReportRoute
+  ApiPublicAgentVersionRoute: typeof ApiPublicAgentVersionRoute
   ApiPublicCommand_resultRoute: typeof ApiPublicCommand_resultRoute
   ApiPublicHeartbeatRoute: typeof ApiPublicHeartbeatRoute
   ApiPublicLogsRoute: typeof ApiPublicLogsRoute
@@ -371,6 +384,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCommand_resultRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/agent-version': {
+      id: '/api/public/agent-version'
+      path: '/api/public/agent-version'
+      fullPath: '/api/public/agent-version'
+      preLoaderRoute: typeof ApiPublicAgentVersionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/agent-report': {
       id: '/api/public/agent-report'
       path: '/api/public/agent-report'
@@ -433,6 +453,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAgentInstallerRoute: ApiPublicAgentInstallerRoute,
   ApiPublicAgentProbeRoute: ApiPublicAgentProbeRoute,
   ApiPublicAgentReportRoute: ApiPublicAgentReportRoute,
+  ApiPublicAgentVersionRoute: ApiPublicAgentVersionRoute,
   ApiPublicCommand_resultRoute: ApiPublicCommand_resultRoute,
   ApiPublicHeartbeatRoute: ApiPublicHeartbeatRoute,
   ApiPublicLogsRoute: ApiPublicLogsRoute,
