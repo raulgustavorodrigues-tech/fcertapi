@@ -556,6 +556,14 @@ function AgentHealthSection({ agents, loading }: { agents: any[]; loading: boole
     return now - oldest > TWO_MIN;
   }).length;
 
+  // Profundidade máxima da fila offline reportada pelos agentes (v1.2.1+)
+  const queueMax = agents.reduce((max: number, a: any) => {
+    const q = Number(a?.system_info?.queue_depth ?? 0);
+    return Number.isFinite(q) && q > max ? q : max;
+  }, 0);
+  const queueTone: "muted" | "warning" | "destructive" =
+    queueMax >= 40000 ? "destructive" : queueMax >= 5000 ? "warning" : "muted";
+
   const alertAgents = agents.filter((a) => {
     const ageMs = a.last_heartbeat_at ? now - new Date(a.last_heartbeat_at).getTime() : Infinity;
     if (ageMs > ONE_MIN) return true;
