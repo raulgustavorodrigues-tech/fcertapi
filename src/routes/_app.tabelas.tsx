@@ -17,26 +17,8 @@ import { SchemaEditorDialog } from "@/components/conecta/SchemaEditorDialog";
 
 export const Route = createFileRoute("/_app/tabelas")({ component: Page });
 
-const MOCK_SCHEMA = [
-  { name: "CLIENTES", rows: 12450, columns: [
-    { name: "ID", type: "INTEGER", pk: true, nullable: false },
-    { name: "NOME", type: "VARCHAR(120)", pk: false, nullable: false },
-    { name: "CPF_CNPJ", type: "VARCHAR(18)", pk: false, nullable: true },
-    { name: "EMAIL", type: "VARCHAR(80)", pk: false, nullable: true },
-  ]},
-  { name: "PRODUTOS", rows: 3287, columns: [
-    { name: "ID", type: "INTEGER", pk: true, nullable: false },
-    { name: "CODIGO", type: "VARCHAR(20)", pk: false, nullable: false },
-    { name: "DESCRICAO", type: "VARCHAR(200)", pk: false, nullable: false },
-    { name: "PRECO_VENDA", type: "NUMERIC(15,2)", pk: false, nullable: false },
-  ]},
-  { name: "VENDAS", rows: 89234, columns: [
-    { name: "ID", type: "INTEGER", pk: true, nullable: false },
-    { name: "DATA", type: "DATE", pk: false, nullable: false },
-    { name: "ID_CLIENTE", type: "INTEGER", pk: false, nullable: false },
-    { name: "TOTAL", type: "NUMERIC(15,2)", pk: false, nullable: false },
-  ]},
-];
+// MOCK_SCHEMA removido — o schema agora vem exclusivamente de schema_cache
+// (populado pelo comando list_tables enviado ao agente).
 
 function Page() {
   const qc = useQueryClient();
