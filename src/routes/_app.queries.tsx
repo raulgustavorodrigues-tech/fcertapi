@@ -164,10 +164,12 @@ function QueriesPage() {
             <Button onClick={() => setEditing(null)}><Plus className="h-4 w-4 mr-1.5" /> Nova Query</Button>
           </DialogTrigger>
           <QueryDialog
+            key={editing?.id ?? "new"}
             initial={editing}
             onClose={() => { setOpen(false); setEditing(null); }}
             onSaved={() => qc.invalidateQueries({ queryKey: ["saved_queries"] })}
           />
+
         </Dialog>
       </div>
 
