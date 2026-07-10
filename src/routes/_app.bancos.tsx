@@ -686,7 +686,10 @@ function DatabaseDialog({
         </div>
         <div className="col-span-2 space-y-1.5">
           <Label>Token do agente</Label>
-          <Input value={form.agent_token} onChange={(e) => setForm({ ...form, agent_token: e.target.value })} className="font-mono text-xs" />
+          <div className="flex gap-2">
+            <Input value={form.agent_token} onChange={(e) => setForm({ ...form, agent_token: e.target.value })} className="font-mono text-xs" placeholder="fsh_..." />
+            <Button type="button" variant="outline" onClick={generateToken}>Gerar</Button>
+          </div>
         </div>
         <div className="col-span-2 space-y-1.5">
           <Label>Observações</Label>
