@@ -3,11 +3,10 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { verifyAgentSignature } from "@/lib/hmac.server";
 
-// Consolidated endpoint: replaces /api/public/logs + /api/public/command_result.
-// Accepts a single report from the agent containing any combination of:
-//  - logs[]        → written to agent_logs
-//  - results[]     → written to command_results + removed from agents.pending_commands
-// The old endpoints remain available as thin wrappers for backwards compatibility.
+// Endpoint consolidado (logs + resultados). CORREÇÃO C3/C4: a manipulação de
+// agents.pending_commands foi removida (fila vive em command_results, gerida
+// pelo /heartbeat). Resultados só atualizam linhas ainda não finalizadas —
+// idempotente frente a reenvios do cache de dedupe do agente v1.3+.
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -70,14 +69,14 @@ export const Route = createFileRoute("/api/public/agent-report")({
           .eq("agent_uid", data.agent_uid)
           .maybeSingle();
         if (!db) return err(404, "AGENT_NOT_FOUND", "agent_uid não registrado");
-        if (db.agent_token !== token) return err(401, "INVALID_TOKEN", "Token inválido");
+        if (!db.agent_token || db.agent_token !== token) return err(401, "INVALID_TOKEN", "Token inválido");
 
         const sig = verifyAgentSignature(request, raw, db.agent_token);
         if (!sig.ok) return err(401, sig.code, sig.message);
 
         const { data: agent } = await supabaseAdmin
           .from("agents")
-          .select("id, pending_commands")
+          .select("id")
           .eq("agent_uid", data.agent_uid)
           .maybeSingle();
 
@@ -85,7 +84,6 @@ export const Route = createFileRoute("/api/public/agent-report")({
         let ingestedResults = 0;
         const now = new Date().toISOString();
 
-        // Logs
         if (data.logs && data.logs.length > 0) {
           const rows = data.logs.map((l) => ({
             database_id: db.id,
@@ -101,7 +99,6 @@ export const Route = createFileRoute("/api/public/agent-report")({
           ingestedLogs = rows.length;
         }
 
-        // Results
         if (data.results && data.results.length > 0) {
           for (const r of data.results) {
             await supabaseAdmin
@@ -113,21 +110,9 @@ export const Route = createFileRoute("/api/public/agent-report")({
                 duration_ms: r.duration_ms ?? null,
                 completed_at: r.completed_at ?? now,
               })
-              .eq("command_id", r.command_id);
+              .eq("command_id", r.command_id)
+              .in("status", ["pending", "processing", "timeout"]);
             ingestedResults++;
-          }
-
-          // Remove processed commands from the pending queue in a single update.
-          if (agent) {
-            const doneIds = new Set(data.results.map((r) => r.command_id));
-            const queue = Array.isArray(agent.pending_commands) ? agent.pending_commands : [];
-            const filtered = queue.filter((c: any) => !doneIds.has(c?.command_id));
-            if (filtered.length !== queue.length) {
-              await supabaseAdmin
-                .from("agents")
-                .update({ pending_commands: filtered as any })
-                .eq("id", agent.id);
-            }
           }
         }
 
