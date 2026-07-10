@@ -3,6 +3,10 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { verifyAgentSignature } from "@/lib/hmac.server";
 
+// CORREÇÃO C3/C4: removida a manipulação de agents.pending_commands.
+// Mantido por compatibilidade com agentes < 1.2; atualiza apenas linhas
+// ainda não finalizadas (idempotência).
+
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -52,7 +56,7 @@ export const Route = createFileRoute("/api/public/command_result")({
           .eq("agent_uid", data.agent_uid)
           .maybeSingle();
         if (!db) return err(404, "AGENT_NOT_FOUND", "agent_uid não registrado");
-        if (db.agent_token !== token) return err(401, "INVALID_TOKEN", "Token inválido");
+        if (!db.agent_token || db.agent_token !== token) return err(401, "INVALID_TOKEN", "Token inválido");
 
         const sig = verifyAgentSignature(request, rawBody, db.agent_token);
         if (!sig.ok) return err(401, sig.code, sig.message);
@@ -67,25 +71,10 @@ export const Route = createFileRoute("/api/public/command_result")({
             duration_ms: data.duration_ms ?? null,
             completed_at: data.completed_at ?? now,
           })
-          .eq("command_id", data.command_id);
+          .eq("command_id", data.command_id)
+          .in("status", ["pending", "processing", "timeout"]);
 
         if (updErr) return err(500, "DB_ERROR", "Falha ao salvar resultado");
-
-        // Remove from pending_commands
-        const { data: agent } = await supabaseAdmin
-          .from("agents")
-          .select("id, pending_commands")
-          .eq("agent_uid", data.agent_uid)
-          .maybeSingle();
-
-        if (agent) {
-          const queue = Array.isArray(agent.pending_commands) ? agent.pending_commands : [];
-          const filtered = queue.filter((c: any) => c.command_id !== data.command_id);
-          await supabaseAdmin
-            .from("agents")
-            .update({ pending_commands: filtered as any })
-            .eq("id", agent.id);
-        }
 
         return Response.json({ success: true }, { headers: CORS });
       },
