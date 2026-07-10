@@ -3,6 +3,11 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { verifyAgentSignature } from "@/lib/hmac.server";
 
+// CORREÇÃO C3/C4: a fonte da verdade da fila é command_results.
+// - pendentes são buscados por database_id e marcados 'processing'
+// - 'processing' sem resposta há >3 min é re-entregue (agente v1.3 deduplica)
+// - comandos com >15 min sem conclusão expiram como 'timeout'
+
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -31,6 +36,10 @@ const heartbeatSchema = z.object({
     .passthrough()
     .optional(),
 }).strict();
+
+const PICKUP_LIMIT = 10;
+const REDELIVERY_AFTER_MS = 3 * 60 * 1000;
+const EXPIRE_AFTER_MS = 15 * 60 * 1000;
 
 export const Route = createFileRoute("/api/public/heartbeat")({
   server: {
@@ -67,11 +76,10 @@ export const Route = createFileRoute("/api/public/heartbeat")({
 
         const { data: existing } = await supabaseAdmin
           .from("agents")
-          .select("id, pending_commands, heartbeat_interval_seconds")
+          .select("id, heartbeat_interval_seconds")
           .eq("agent_uid", data.agent_uid)
           .maybeSingle();
 
-        // Consolida queue_depth dentro de system_info para não exigir schema change
         const mergedSystemInfo = {
           ...(data.system_info ?? {}),
           ...(typeof data.queue_depth === "number" ? { queue_depth: data.queue_depth } : {}),
@@ -86,25 +94,10 @@ export const Route = createFileRoute("/api/public/heartbeat")({
           system_info: (Object.keys(mergedSystemInfo).length ? mergedSystemInfo : null) as any,
         };
 
-        let pending: any[] = [];
         let interval = 30;
-
         if (existing) {
           await supabaseAdmin.from("agents").update(update).eq("id", existing.id);
-          pending = Array.isArray(existing.pending_commands) ? existing.pending_commands : [];
           interval = existing.heartbeat_interval_seconds ?? 30;
-
-          // mark commands as picked_up
-          if (pending.length > 0) {
-            const ids = pending.map((c: any) => c.command_id).filter(Boolean);
-            if (ids.length > 0) {
-              await supabaseAdmin
-                .from("command_results")
-                .update({ status: "processing", picked_up_at: now })
-                .in("command_id", ids)
-                .eq("status", "pending");
-            }
-          }
         } else {
           await supabaseAdmin.from("agents").insert({
             ...update,
@@ -113,6 +106,62 @@ export const Route = createFileRoute("/api/public/heartbeat")({
             alias: data.agent_uid,
             first_seen_at: now,
           });
+        }
+
+        // 1) Expira comandos abandonados (>15 min)
+        const expireBefore = new Date(Date.now() - EXPIRE_AFTER_MS).toISOString();
+        await supabaseAdmin
+          .from("command_results")
+          .update({
+            status: "timeout",
+            error_message: "Comando expirado: agente não concluiu dentro de 15 minutos",
+            completed_at: now,
+          })
+          .eq("database_id", db.id)
+          .in("status", ["pending", "processing"])
+          .lt("enqueued_at", expireBefore);
+
+        // 2) Busca pendentes + 'processing' órfãos (duas queries separadas
+        //    para evitar armadilhas do or= do PostgREST com timestamps)
+        const redeliverBefore = new Date(Date.now() - REDELIVERY_AFTER_MS).toISOString();
+
+        const { data: pendingRows } = await supabaseAdmin
+          .from("command_results")
+          .select("command_id, command_type, payload, enqueued_at")
+          .eq("database_id", db.id)
+          .eq("status", "pending")
+          .order("enqueued_at", { ascending: true })
+          .limit(PICKUP_LIMIT);
+
+        let rows = pendingRows ?? [];
+
+        if (rows.length < PICKUP_LIMIT) {
+          const { data: staleRows } = await supabaseAdmin
+            .from("command_results")
+            .select("command_id, command_type, payload, enqueued_at")
+            .eq("database_id", db.id)
+            .eq("status", "processing")
+            .lt("picked_up_at", redeliverBefore)
+            .order("enqueued_at", { ascending: true })
+            .limit(PICKUP_LIMIT - rows.length);
+          rows = rows.concat(staleRows ?? []);
+        }
+
+        // Formato compatível com agentes antigos (type) e novos (command_type)
+        const pending = rows.map((r) => ({
+          command_id: r.command_id,
+          command_type: r.command_type,
+          type: r.command_type,
+          payload: (r.payload ?? {}) as Record<string, unknown>,
+          enqueued_at: r.enqueued_at,
+        }));
+
+        // 3) Marca entregues como 'processing'
+        if (pending.length > 0) {
+          await supabaseAdmin
+            .from("command_results")
+            .update({ status: "processing", picked_up_at: now })
+            .in("command_id", pending.map((p) => p.command_id));
         }
 
         return Response.json(
