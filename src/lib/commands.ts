@@ -1,5 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
 
+// CORREÇÕES C2/C3/C4:
+//  - enqueueCommand é INSERT-ONLY em command_results (o array JSONB
+//    agents.pending_commands foi aposentado; quem entrega é o /heartbeat)
+//  - assertReadOnlySql(): defesa em profundidade no cliente para run_query
+//    (a validação definitiva acontece no agente v1.3+)
+
 export type CommandType =
   | "ping_test"
   | "list_tables"
@@ -18,40 +24,53 @@ function genId() {
   return `cmd_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
 }
 
-/**
- * Enqueue a command for the agent attached to a database.
- * - Inserts a row in command_results (status=pending)
- * - Pushes onto agents.pending_commands
- */
+const FORBIDDEN_SQL = /\b(INSERT|UPDATE|DELETE|MERGE|DROP|ALTER|CREATE|RECREATE|TRUNCATE|GRANT|REVOKE|EXECUTE|COMMIT|ROLLBACK|SET\s+GENERATOR|SET\s+STATISTICS)\b/i;
+
+/** Remove literais de string e comentários para inspecionar apenas keywords. */
+function stripSqlNoise(sql: string): string {
+  return sql
+    .replace(/'(?:[^']|'')*'/g, "''")
+    .replace(/--[^\n]*/g, " ")
+    .replace(/\/\*[\s\S]*?\*\//g, " ");
+}
+
+/** Garante que o SQL é uma única instrução de leitura (SELECT/WITH). */
+export function assertReadOnlySql(sql: string): void {
+  const stripped = stripSqlNoise(sql).trim().replace(/;\s*$/, "");
+  if (!stripped) throw new Error("SQL vazio");
+  if (stripped.includes(";")) {
+    throw new Error("Apenas uma instrução por execução (remova os ';' intermediários)");
+  }
+  const first = stripped.match(/^[A-Za-z]+/)?.[0]?.toUpperCase() ?? "";
+  if (first !== "SELECT" && first !== "WITH") {
+    throw new Error("Apenas consultas SELECT/WITH são permitidas pelo módulo Queries");
+  }
+  const bad = stripped.match(FORBIDDEN_SQL);
+  if (bad) {
+    throw new Error(`Instrução de escrita/DDL bloqueada: "${bad[0].toUpperCase()}" não é permitida`);
+  }
+}
+
+/** Enfileira um comando: UMA linha em command_results; o heartbeat entrega. */
 export async function enqueueCommand(
   databaseId: string,
   type: CommandType,
   payload: Record<string, any> = {},
 ): Promise<{ command_id: string; agent_id: string | null }> {
+  if (type === "run_query") {
+    assertReadOnlySql(String(payload?.sql ?? ""));
+  }
+
   const command_id = genId();
 
+  // agent_id é apenas informativo; a entrega é por database_id
   const { data: agent } = await supabase
     .from("agents")
-    .select("id, pending_commands")
+    .select("id")
     .eq("database_id", databaseId)
     .maybeSingle();
 
-  const cmd: PendingCommand = {
-    command_id,
-    type,
-    payload,
-    enqueued_at: new Date().toISOString(),
-  };
-
-  if (agent) {
-    const queue = Array.isArray(agent.pending_commands) ? agent.pending_commands : [];
-    await supabase
-      .from("agents")
-      .update({ pending_commands: [...queue, cmd] })
-      .eq("id", agent.id);
-  }
-
-  await supabase.from("command_results").insert({
+  const { error } = await supabase.from("command_results").insert({
     agent_id: agent?.id ?? null,
     database_id: databaseId,
     command_id,
@@ -59,14 +78,12 @@ export async function enqueueCommand(
     payload,
     status: "pending",
   });
+  if (error) throw error;
 
   return { command_id, agent_id: agent?.id ?? null };
 }
 
-/**
- * Poll for a command result with timeout. Resolves when status is success/error/timeout
- * or rejects on timeout. Optional onUpdate callback fires on every poll with the current row.
- */
+/** Aguarda o resultado com timeout; marca timeout se o agente não responder. */
 export async function awaitCommandResult(
   command_id: string,
   opts: { timeoutMs?: number; intervalMs?: number; onUpdate?: (row: any) => void } = {},
@@ -91,7 +108,6 @@ export async function awaitCommandResult(
     await new Promise((r) => setTimeout(r, intervalMs));
   }
 
-  // Mark as timeout
   await supabase
     .from("command_results")
     .update({
@@ -99,14 +115,12 @@ export async function awaitCommandResult(
       error_message: "Agente não respondeu dentro do tempo esperado",
       completed_at: new Date().toISOString(),
     })
-    .eq("command_id", command_id);
+    .eq("command_id", command_id)
+    .in("status", ["pending", "processing"]);
 
   throw new Error("Tempo esgotado aguardando resposta do agente");
 }
 
-/**
- * Compute agent connection mode based on heartbeat and tunnel.
- */
 export function agentConnectionMode(agent: {
   last_heartbeat_at?: string | null;
   tunnel_url?: string | null;
