@@ -221,7 +221,75 @@ def _queue_conn():
         "attempts INTEGER NOT NULL DEFAULT 0"
         ")"
     )
+    # correcoes-v1 (C3): cache de comandos já executados. Se o Hub re-entregar
+    # um command_id, o agente NÃO re-executa — reenvia o resultado em cache.
+    con.execute(
+        "CREATE TABLE IF NOT EXISTS executed_commands ("
+        "command_id TEXT PRIMARY KEY,"
+        "command_type TEXT NOT NULL,"
+        "status TEXT NOT NULL,"
+        "result TEXT,"
+        "error TEXT,"
+        "duration_ms INTEGER NOT NULL DEFAULT 0,"
+        "created_at TEXT NOT NULL"
+        ")"
+    )
     return con
+
+
+def dedupe_get(command_id: str) -> Optional[Dict[str, Any]]:
+    """Retorna o resultado em cache de um comando já executado, se houver."""
+    try:
+        con = _queue_conn()
+        row = con.execute(
+            "SELECT command_type,status,result,error,duration_ms "
+            "FROM executed_commands WHERE command_id=?",
+            (command_id,),
+        ).fetchone()
+        con.close()
+        if not row:
+            return None
+        ctype, status, result_json, error, duration_ms = row
+        return {
+            "command_type": ctype,
+            "status": status,
+            "result": json.loads(result_json) if result_json else None,
+            "error": error,
+            "duration_ms": int(duration_ms or 0),
+        }
+    except Exception as e:
+        log.warning("dedupe_get falhou: %s", e)
+        return None
+
+
+def dedupe_put(command_id: str, command_type: str, status: str,
+               result: Any, error: Optional[str], duration_ms: int) -> None:
+    try:
+        con = _queue_conn()
+        con.execute(
+            "INSERT OR REPLACE INTO executed_commands "
+            "(command_id,command_type,status,result,error,duration_ms,created_at) "
+            "VALUES (?,?,?,?,?,?,?)",
+            (command_id, command_type, status,
+             json.dumps(result) if result is not None else None,
+             error, int(duration_ms),
+             datetime.now(timezone.utc).isoformat()),
+        )
+        con.commit(); con.close()
+    except Exception as e:
+        log.warning("dedupe_put falhou: %s", e)
+
+
+def dedupe_prune(days: int = 7) -> None:
+    """Remove entradas antigas do cache de deduplicação."""
+    try:
+        con = _queue_conn()
+        cutoff = datetime.now(timezone.utc).timestamp() - days * 86400
+        cutoff_iso = datetime.fromtimestamp(cutoff, timezone.utc).isoformat()
+        con.execute("DELETE FROM executed_commands WHERE created_at < ?", (cutoff_iso,))
+        con.commit(); con.close()
+    except Exception as e:
+        log.warning("dedupe_prune falhou: %s", e)
 
 
 def queue_depth() -> int:
