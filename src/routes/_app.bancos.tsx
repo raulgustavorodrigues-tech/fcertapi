@@ -687,9 +687,19 @@ function DatabaseDialog({
         <div className="col-span-2 space-y-1.5">
           <Label>Token do agente</Label>
           <div className="flex gap-2">
-            <Input value={form.agent_token} onChange={(e) => setForm({ ...form, agent_token: e.target.value })} className="font-mono text-xs" placeholder="fsh_..." />
-            <Button type="button" variant="outline" onClick={generateToken}>Gerar</Button>
+            <Input
+              value={form.agent_token}
+              onChange={(e) => setForm({ ...form, agent_token: e.target.value })}
+              className="font-mono text-xs"
+              placeholder="Clique em Gerar — obrigatório para o agente se comunicar"
+            />
+            <Button type="button" variant="outline" onClick={generateToken} title="Gerar token seguro (32 bytes)">
+              <Zap className="h-3.5 w-3.5 mr-1" /> Gerar
+            </Button>
           </div>
+          <p className="text-[11px] text-muted-foreground">
+            O endpoint público de registro não gera mais tokens. Gere aqui e baixe o instalador novamente se trocar.
+          </p>
         </div>
         <div className="col-span-2 space-y-1.5">
           <Label>Observações</Label>
