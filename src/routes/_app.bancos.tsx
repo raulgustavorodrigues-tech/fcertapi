@@ -548,20 +548,51 @@ function DatabaseDialog({
   const [showPwd, setShowPwd] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // correcoes-v1 (C1): o token nasce AQUI (Hub autenticado), nunca no /register
+  function generateToken() {
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+    const token = "fsh_" + Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+    setForm((f: any) => ({ ...f, agent_token: token }));
+    toast.success("Token gerado — salve o banco para ativá-lo");
+  }
+
   async function save() {
     if (!form.company_id) { toast.error("Selecione a empresa"); return; }
     if (!form.name.trim()) { toast.error("Nome é obrigatório"); return; }
     setSaving(true);
     try {
+      const tokenChanged = !!form.agent_token && form.agent_token !== (initial?.agent_token ?? "");
+      let dbId: string | null = initial?.id ?? null;
+
       if (initial) {
         const { error } = await supabase.from("databases").update(form).eq("id", initial.id);
         if (error) throw error;
         toast.success("Banco atualizado");
       } else {
-        const { error } = await supabase.from("databases").insert(form);
+        const { data: inserted, error } = await supabase
+          .from("databases").insert(form).select("id").single();
         if (error) throw error;
+        dbId = inserted?.id ?? null;
         toast.success("Banco cadastrado. Use 'Testar' para validar a conexão.");
       }
+
+      if (tokenChanged && dbId) {
+        try {
+          if (initial?.agent_token) {
+            await supabase
+              .from("agent_token_history" as any)
+              .update({ revoked_at: new Date().toISOString(), revoked_reason: "Substituído no cadastro do banco" } as any)
+              .eq("database_id", dbId)
+              .eq("token", initial.agent_token)
+              .is("revoked_at", null);
+          }
+          await supabase
+            .from("agent_token_history" as any)
+            .insert({ database_id: dbId, token: form.agent_token } as any);
+        } catch { /* histórico não bloqueia o save */ }
+      }
+
       onSaved();
       onClose();
     } catch (e: any) {
@@ -655,7 +686,10 @@ function DatabaseDialog({
         </div>
         <div className="col-span-2 space-y-1.5">
           <Label>Token do agente</Label>
-          <Input value={form.agent_token} onChange={(e) => setForm({ ...form, agent_token: e.target.value })} className="font-mono text-xs" />
+          <div className="flex gap-2">
+            <Input value={form.agent_token} onChange={(e) => setForm({ ...form, agent_token: e.target.value })} className="font-mono text-xs" placeholder="fsh_..." />
+            <Button type="button" variant="outline" onClick={generateToken}>Gerar</Button>
+          </div>
         </div>
         <div className="col-span-2 space-y-1.5">
           <Label>Observações</Label>
