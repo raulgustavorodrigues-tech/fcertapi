@@ -799,6 +799,7 @@ def run_loop(stop_check=lambda: _STOP) -> None:
     _validate_cfg()
     log.info("FireSync Agent %s iniciado — UID=%s alias=%s",
              CFG["version"], CFG["agent_uid"], CFG["alias"])
+    dedupe_prune(days=7)
     register()
     last_sync = 0.0
     fails = 0
