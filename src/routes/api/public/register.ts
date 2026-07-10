@@ -1,11 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { verifyAgentSignature } from "@/lib/hmac.server";
+
+// CORREÇÃO C1: antes este endpoint não exigia autenticação e RETORNAVA o
+// agent_token — qualquer um com um agent_uid previsível obtinha o token.
+// Agora: Bearer obrigatório (deve conferir com databases.agent_token),
+// HMAC verificado, e o token NUNCA é gerado nem retornado aqui.
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-FireSync-Signature",
 };
 
 function err(status: number, code: string, message: string) {
@@ -20,24 +26,21 @@ const registerSchema = z.object({
   ip_address: z.string().max(64).optional(),
 }).strict();
 
-function genToken() {
-  const bytes = new Uint8Array(32);
-  crypto.getRandomValues(bytes);
-  return "fsh_" + Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
 export const Route = createFileRoute("/api/public/register")({
   server: {
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: CORS }),
       POST: async ({ request }) => {
+        const token = (request.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+        if (!token) return err(401, "MISSING_TOKEN", "Authorization Bearer ausente");
+
+        const raw = await request.text();
         let body: unknown;
-        try { body = await request.json(); } catch { return err(400, "INVALID_JSON", "Body inválido"); }
+        try { body = JSON.parse(raw); } catch { return err(400, "INVALID_JSON", "Body inválido"); }
         const parsed = registerSchema.safeParse(body);
         if (!parsed.success) return err(422, "VALIDATION_ERROR", "Payload inválido");
         const data = parsed.data;
 
-        // Find the corresponding database; create token if needed
         const { data: db } = await supabaseAdmin
           .from("databases")
           .select("id, agent_token, sync_interval, sync_tables, name")
@@ -45,16 +48,14 @@ export const Route = createFileRoute("/api/public/register")({
           .maybeSingle();
 
         if (!db) return err(404, "AGENT_NOT_FOUND", "agent_uid não está cadastrado em nenhum banco");
-
-        let token = db.agent_token;
-        if (!token) {
-          token = genToken();
-          await supabaseAdmin.from("databases").update({ agent_token: token }).eq("id", db.id);
-          await supabaseAdmin.from("agent_token_history").insert({
-            database_id: db.id,
-            token,
-          });
+        if (!db.agent_token) {
+          return err(401, "TOKEN_NOT_CONFIGURED",
+            "Este banco ainda não possui token. Gere o token no Hub (Bancos > Editar > Gerar token) e baixe o instalador novamente.");
         }
+        if (db.agent_token !== token) return err(401, "INVALID_TOKEN", "Token inválido ou revogado");
+
+        const sig = verifyAgentSignature(request, raw, db.agent_token);
+        if (!sig.ok) return err(401, sig.code, sig.message);
 
         const now = new Date().toISOString();
 
@@ -84,9 +85,9 @@ export const Route = createFileRoute("/api/public/register")({
           });
         }
 
+        // IMPORTANTE: o token NÃO é retornado. Apenas configuração operacional.
         return Response.json({
           success: true,
-          agent_token: token,
           config: {
             heartbeat_interval_seconds: 30,
             sync_interval_seconds: db.sync_interval ?? 900,
