@@ -724,6 +724,16 @@ def handle_command(cmd: Dict[str, Any]) -> None:
     cid = cmd.get("command_id") or str(uuid.uuid4())
     ctype = cmd.get("command_type") or cmd.get("type")
     payload = cmd.get("payload") or {}
+
+    # correcoes-v1 (C3): deduplicação — comando re-entregue reenvia o cache
+    cached = dedupe_get(cid)
+    if cached is not None:
+        log.info("comando %s (%s) já executado — reenviando resultado em cache", ctype, cid)
+        post_result(cid, cached["command_type"], cached["status"],
+                    result=cached["result"], error=cached["error"],
+                    duration_ms=cached["duration_ms"])
+        return
+
     log.info("comando recebido: %s (%s)", ctype, cid)
     t0 = time.time()
     try:
@@ -731,13 +741,18 @@ def handle_command(cmd: Dict[str, Any]) -> None:
         elif ctype == "list_tables":  res = cmd_list_tables()
         elif ctype == "run_query":    res = cmd_run_query(payload)
         elif ctype == "network_test": res = cmd_network_test(payload)
+        elif ctype == "force_sync":
+            do_sync()
+            res = {"synced": True, "at": datetime.now(timezone.utc).isoformat()}
         else: raise ValueError(f"command_type desconhecido: {ctype}")
-        post_result(cid, ctype, "success", result=res,
-                    duration_ms=int((time.time() - t0) * 1000))
+        dur = int((time.time() - t0) * 1000)
+        dedupe_put(cid, ctype, "success", res, None, dur)
+        post_result(cid, ctype, "success", result=res, duration_ms=dur)
     except Exception as e:
         log.error("comando %s falhou: %s\n%s", ctype, e, traceback.format_exc())
-        post_result(cid, ctype, "error", error=str(e),
-                    duration_ms=int((time.time() - t0) * 1000))
+        dur = int((time.time() - t0) * 1000)
+        dedupe_put(cid, ctype, "error", None, str(e), dur)
+        post_result(cid, ctype, "error", error=str(e), duration_ms=dur)
 
 
 def do_sync() -> None:
