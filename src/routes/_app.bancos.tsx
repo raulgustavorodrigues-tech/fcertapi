@@ -67,31 +67,21 @@ function BancosPage() {
   
 
   async function syncNow(db: any) {
-    toast.info(`Iniciando sync em ${db.name}…`);
-    const startedAt = new Date().toISOString();
-    const { data: log } = await supabase
-      .from("sync_logs")
-      .insert({ database_id: db.id, started_at: startedAt, status: "running" })
-      .select()
-      .single();
-    setTimeout(async () => {
-      const ok = Math.random() > 0.2;
-      const dur = 800 + Math.floor(Math.random() * 4000);
-      const records = ok ? Math.floor(Math.random() * 2000) : 0;
-      if (log) {
-        await supabase.from("sync_logs").update({
-          finished_at: new Date().toISOString(),
-          duration_ms: dur,
-          records_count: records,
-          status: ok ? "success" : "error",
-          error_message: ok ? null : "Timeout ao conectar com Firebird",
-        }).eq("id", log.id);
+    toast.info(`Solicitando sync em ${db.name}…`);
+    try {
+      const { enqueueCommand, awaitCommandResult } = await import("@/lib/commands");
+      const { command_id } = await enqueueCommand(db.id, "force_sync", {});
+      const row = await awaitCommandResult(command_id, { timeoutMs: 90_000, intervalMs: 2_500 });
+      if (row.status === "success") {
+        toast.success(`${db.name}: sync executado pelo agente`);
+      } else {
+        toast.error(`${db.name}: ${row.error_message ?? "falha no sync"}`);
       }
-      await supabase.from("databases").update({ last_sync_at: new Date().toISOString() }).eq("id", db.id);
-      qc.invalidateQueries({ queryKey: ["databases"] });
-      qc.invalidateQueries({ queryKey: ["dashboard"] });
-      ok ? toast.success(`${db.name}: ${records} registros sincronizados`) : toast.error(`${db.name}: sync falhou`);
-    }, 1500);
+    } catch (e: any) {
+      toast.error(`${db.name}: ${e?.message ?? "agente não respondeu"}`);
+    }
+    qc.invalidateQueries({ queryKey: ["databases"] });
+    qc.invalidateQueries({ queryKey: ["dashboard"] });
   }
 
   return (
