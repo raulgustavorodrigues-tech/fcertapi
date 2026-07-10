@@ -648,25 +648,76 @@ def cmd_list_tables() -> Dict[str, Any]:
     return {"tables": out}
 
 
-def cmd_run_query(payload: Dict[str, Any]) -> Dict[str, Any]:
-    sql = (payload or {}).get("sql", "")
-    if not sql.strip():
+# --- correcoes-v1 (C2): run_query é SOMENTE LEITURA -------------------------
+# Regras: uma única instrução; primeira keyword SELECT ou WITH; keywords de
+# escrita/DDL/transação bloqueadas (fora de strings/comentários); resultado
+# limitado a max_rows (default 1000, teto 5000); transação sempre revertida.
+import re as _re
+
+_SQL_FORBIDDEN = _re.compile(
+    r"\b(INSERT|UPDATE|DELETE|MERGE|DROP|ALTER|CREATE|RECREATE|TRUNCATE|"
+    r"GRANT|REVOKE|EXECUTE|COMMIT|ROLLBACK|SET\s+GENERATOR|SET\s+STATISTICS)\b",
+    _re.IGNORECASE,
+)
+
+MAX_QUERY_ROWS_HARD = 5000
+
+
+def _strip_sql_noise(sql: str) -> str:
+    """Remove literais de string e comentários para inspecionar keywords."""
+    s = _re.sub(r"'(?:[^']|'')*'", "''", sql)
+    s = _re.sub(r"--[^\n]*", " ", s)
+    s = _re.sub(r"/\*.*?\*/", " ", s, flags=_re.DOTALL)
+    return s
+
+
+def _assert_readonly_sql(sql: str) -> str:
+    stripped = _strip_sql_noise(sql).strip()
+    stripped = _re.sub(r";\s*$", "", stripped)
+    if not stripped:
         raise ValueError("SQL vazio")
-    con = _db_connect(); cur = con.cursor()
-    statements = [s.strip() for s in sql.split(";") if s.strip()]
-    cols: list = []; rows: list = []; affected = 0
-    for stmt in statements:
-        cur.execute(stmt)
-        if cur.description:
-            cols = [d[0] for d in cur.description]
-            rows = [list(r) for r in cur.fetchall()]
-        else:
-            try:
-                affected += cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
-            except Exception:
-                pass
-    con.commit(); con.close()
-    return {"columns": cols, "rows": rows, "row_count": len(rows), "affected": affected}
+    if ";" in stripped:
+        raise ValueError("Apenas uma instrução por comando (remova os ';' intermediários)")
+    m = _re.match(r"^([A-Za-z]+)", stripped)
+    first = (m.group(1).upper() if m else "")
+    if first not in ("SELECT", "WITH"):
+        raise ValueError("Apenas consultas SELECT/WITH são permitidas via run_query")
+    bad = _SQL_FORBIDDEN.search(stripped)
+    if bad:
+        raise ValueError(f"Instrução bloqueada (somente leitura): {bad.group(0).upper()}")
+    return sql.strip().rstrip(";").strip()
+
+
+def cmd_run_query(payload: Dict[str, Any]) -> Dict[str, Any]:
+    sql = _assert_readonly_sql((payload or {}).get("sql", ""))
+    try:
+        max_rows = int((payload or {}).get("max_rows") or 1000)
+    except Exception:
+        max_rows = 1000
+    max_rows = max(1, min(max_rows, MAX_QUERY_ROWS_HARD))
+
+    con = _db_connect()
+    try:
+        cur = con.cursor()
+        cur.execute(sql)
+        cols = [d[0] for d in cur.description] if cur.description else []
+        rows = [list(r) for r in cur.fetchmany(max_rows + 1)]
+        truncated = len(rows) > max_rows
+        if truncated:
+            rows = rows[:max_rows]
+        return {
+            "columns": cols,
+            "rows": rows,
+            "row_count": len(rows),
+            "truncated": truncated,
+            "max_rows": max_rows,
+            "affected": 0,
+        }
+    finally:
+        try: con.rollback()   # garantia extra: nada é persistido
+        except Exception: pass
+        try: con.close()
+        except Exception: pass
 
 
 def handle_command(cmd: Dict[str, Any]) -> None:
