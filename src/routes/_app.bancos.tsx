@@ -221,44 +221,81 @@ function DatabaseCard({
   const [running, setRunning] = useState(false);
   const [latency, setLatency] = useState<number | null>(db.last_latency_ms ?? null);
 
+  // correcoes-v1: teste real via Command Queue (ping_test do agente)
   async function runTest() {
+    const ag = Array.isArray(db.agents) ? db.agents[0] : db.agents;
+    const hbAge = ag?.last_heartbeat_at
+      ? Date.now() - new Date(ag.last_heartbeat_at).getTime()
+      : Infinity;
+    if (hbAge > 5 * 60 * 1000) {
+      toast.error(`${db.name}: agente offline — instale/inicie o FireSync Agent para testar a conexão real.`);
+      return;
+    }
+
     setRunning(true);
     setPopoverOpen(true);
     const initial: TestStep[] = [
-      { key: "ping", label: "Ping do host", status: "pending" },
+      { key: "file", label: "Arquivo .FDB acessível", status: "pending" },
       { key: "auth", label: "Autenticação SYSDBA", status: "pending" },
-      { key: "db", label: "Abrir arquivo .FDB", status: "pending" },
+      { key: "db", label: "Conexão com o banco", status: "pending" },
       { key: "query", label: "Query de teste (SELECT 1)", status: "pending" },
     ];
-    setSteps(initial);
-    const overallStart = Date.now();
+    setSteps(initial.map((s) => ({ ...s, status: "running" as StepStatus })));
+
     let failed = false;
     let stepFailed: string | null = null;
     let errorDetail: string | null = null;
+    let measuredLatency: number | null = null;
 
-    for (let i = 0; i < initial.length; i++) {
-      setSteps((prev) => prev.map((s, idx) => (idx === i ? { ...s, status: "running" } : s)));
-      const t0 = Date.now();
-      await new Promise((r) => setTimeout(r, 350 + Math.random() * 500));
-      const ms = Date.now() - t0;
-      const ok = !(i === 2 && Math.random() < 0.15) && !(i === 0 && Math.random() < 0.05);
-      if (!ok) {
+    try {
+      const { enqueueCommand, awaitCommandResult } = await import("@/lib/commands");
+      const { command_id } = await enqueueCommand(db.id, "ping_test", {});
+      const row = await awaitCommandResult(command_id, { timeoutMs: 75_000, intervalMs: 2_000 });
+
+      if (row.status === "success" && row.result) {
+        const r = row.result;
+        measuredLatency = typeof r.latency_ms === "number" ? r.latency_ms : null;
+        const mapped: TestStep[] = [
+          {
+            key: "file", label: "Arquivo .FDB acessível",
+            status: r.file_exists === false ? "error" : "success",
+            detail: r.file_error ?? undefined,
+          },
+          {
+            key: "auth", label: "Autenticação SYSDBA",
+            status: r.auth_ok === false ? "error" : r.auth_ok === true ? "success" : "pending",
+            detail: r.auth_error ?? undefined,
+          },
+          {
+            key: "db", label: "Conexão com o banco",
+            status: r.db_reachable === false ? "error" : r.db_reachable === true ? "success" : "pending",
+            detail: r.db_error ?? undefined,
+          },
+          {
+            key: "query", label: "Query de teste (SELECT 1)",
+            status: r.test_query_ok === false ? "error" : r.test_query_ok === true ? "success" : "pending",
+            detail: r.query_error ?? undefined, ms: measuredLatency ?? undefined,
+          },
+        ];
+        setSteps(mapped);
+        failed = r.ok !== true;
+        const firstErr = mapped.find((s) => s.status === "error");
+        stepFailed = firstErr?.key ?? null;
+        errorDetail = firstErr?.detail ?? (typeof r.error === "string" ? r.error : null);
+      } else {
         failed = true;
-        stepFailed = initial[i].key;
-        errorDetail = i === 0 ? "Host inalcançável (timeout)" : "Não foi possível abrir o arquivo .FDB";
+        stepFailed = "agent";
+        errorDetail = row.error_message ?? "Agente retornou erro";
+        setSteps((prev) => prev.map((s) => ({ ...s, status: "error" as StepStatus, detail: errorDetail ?? undefined })));
       }
-      setSteps((prev) =>
-        prev.map((s, idx) =>
-          idx === i
-            ? { ...s, status: failed ? "error" : "success", ms, detail: failed ? errorDetail ?? undefined : undefined }
-            : s
-        )
-      );
-      if (failed) break;
+    } catch (e: any) {
+      failed = true;
+      stepFailed = "agent";
+      errorDetail = e?.message ?? "Timeout aguardando o agente";
+      setSteps((prev) => prev.map((s) => ({ ...s, status: "error" as StepStatus, detail: errorDetail ?? undefined })));
     }
 
-    const totalLatency = Date.now() - overallStart;
-    setLatency(failed ? null : totalLatency);
+    setLatency(failed ? null : measuredLatency);
     setRunning(false);
 
     try {
@@ -266,7 +303,7 @@ function DatabaseCard({
       await supabase.from("agent_events").insert({
         database_id: db.id,
         event_type: "connectivity_test",
-        latency_ms: failed ? 0 : totalLatency,
+        latency_ms: failed ? 0 : (measuredLatency ?? 0),
         level: failed ? "error" : "success",
         step: stepFailed,
         error_detail: errorDetail,
@@ -274,8 +311,8 @@ function DatabaseCard({
     } catch {}
     onRefresh();
 
-    if (failed) toast.error(`${db.name}: falha em "${stepFailed}"`);
-    else toast.success(`${db.name}: conexão OK (${totalLatency}ms)`);
+    if (failed) toast.error(`${db.name}: falha${stepFailed ? ` em "${stepFailed}"` : ""}${errorDetail ? ` — ${errorDetail}` : ""}`);
+    else toast.success(`${db.name}: conexão OK${measuredLatency != null ? ` (${measuredLatency}ms)` : ""}`);
   }
 
   async function copyConfig() {
