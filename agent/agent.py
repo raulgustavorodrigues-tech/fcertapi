@@ -916,8 +916,8 @@ def uninstall_service() -> int:
     if not _is_admin():
         print("ERRO: execute como Administrador para remover o serviço.")
         return 2
-    _sc("stop",   SERVICE_NAME)
-    _sc("delete", SERVICE_NAME)
+    _sc(f"stop {SERVICE_NAME}")
+    _sc(f"delete {SERVICE_NAME}")
     print(f"Serviço '{SERVICE_NAME}' removido.")
     return 0
 
