@@ -26,7 +26,7 @@ const resultSchema = z.object({
   command_type: z.string().min(1).max(64),
   status: z.enum(["success", "error"]),
   result: z.any().optional(),
-  error_message: z.string().max(2000).optional(),
+  error_message: z.string().max(2000).nullish(),
   duration_ms: z.number().int().min(0).optional(),
   completed_at: z.string().optional(),
 }).strict();
