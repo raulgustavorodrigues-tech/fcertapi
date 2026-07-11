@@ -71,7 +71,8 @@ LOGS_ENDPOINT=${origin}/api/public/logs
 API_TOKEN=${db.agent_token}
 AGENT_UID=${db.agent_uid ?? ""}
 AGENT_ALIAS=${db.name}
-AGENT_VERSION=1.1.0
+
+
 
 DB_TYPE=firebird
 DB_HOST=${db.host ?? "localhost"}
