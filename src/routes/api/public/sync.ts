@@ -45,7 +45,7 @@ const syncPayloadSchema = z
     tables: z
       .array(tableSchema)
       .min(1, "tables deve conter ao menos 1 tabela")
-      .max(500, "tables excede o limite (500)"),
+      .max(5000, "tables excede o limite (5000)"),
   })
   .strict();
 
