@@ -71,7 +71,8 @@ LOGS_ENDPOINT=${origin}/api/public/logs
 API_TOKEN=${db.agent_token}
 AGENT_UID=${db.agent_uid ?? ""}
 AGENT_ALIAS=${db.name}
-AGENT_VERSION=1.1.0
+
+
 
 DB_TYPE=firebird
 DB_HOST=${db.host ?? "localhost"}
@@ -124,6 +125,22 @@ echo       URL: %INSTALLER_URL%
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$ProgressPreference='SilentlyContinue'; try { Invoke-WebRequest -Uri '%INSTALLER_URL%' -OutFile '%INSTALLER_EXE%' -UseBasicParsing } catch { Write-Host $_.Exception.Message; exit 1 }"
 if errorlevel 1 goto :download_fail
 if not exist "%INSTALLER_EXE%" goto :download_fail
+
+echo       Validando o arquivo baixado...
+powershell -NoProfile -Command "$b=[IO.File]::ReadAllBytes('%INSTALLER_EXE%')[0..1]; if($b[0] -ne 77 -or $b[1] -ne 90){ exit 1 }"
+if errorlevel 1 (
+    echo.
+    echo ERRO: o arquivo baixado NAO e um executavel Windows valido.
+    echo Provavelmente a URL do instalador esta incorreta e retornou uma
+    echo pagina HTML ^(verifique AGENT_INSTALLER_URL no Hub^).
+    echo URL usada: %INSTALLER_URL%
+    del "%INSTALLER_EXE%" >nul 2>&1
+    pause
+    exit /b 5
+)
+for %%A in ("%INSTALLER_EXE%") do echo       OK: %%~zA bytes
+
+
 
 echo [2/3] Instalando (silencioso) e registrando servico...
 "%INSTALLER_EXE%" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /ENVFILE="%ENVFILE%"
