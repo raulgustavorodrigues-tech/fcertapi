@@ -16,7 +16,7 @@ function err(status: number, code: string, message: string) {
 const logEntry = z.object({
   level: z.enum(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]),
   message: z.string().min(1).max(4000),
-  context: z.record(z.any()).optional(),
+  context: z.record(z.any()).nullable().optional(),
   timestamp: z.string().optional(),
 });
 
