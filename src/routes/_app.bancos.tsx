@@ -514,6 +514,9 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
         <Button size="sm" variant="outline" onClick={downloadProbe} title="Baixar probe de diagnóstico (somente leitura) para levantar requisitos pendentes">
           <Download className="h-3.5 w-3.5 mr-1" /> Probe
         </Button>
+        <Button size="sm" variant="outline" onClick={downloadInstallPdf} title="PDF com passo a passo da instalação deste banco">
+          <FileText className="h-3.5 w-3.5 mr-1" /> Manual PDF
+        </Button>
         <Button size="sm" variant="outline" onClick={onEdit}>
           <Pencil className="h-3.5 w-3.5" />
         </Button>
