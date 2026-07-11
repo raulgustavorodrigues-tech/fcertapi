@@ -841,9 +841,21 @@ def _is_admin() -> bool:
         return False
 
 
-def _sc(*args: str) -> int:
-    log.info("sc %s", " ".join(args))
-    return subprocess.call(["sc"] + list(args))
+def _sc(args: str) -> int:
+    """Executa sc.exe com a linha de comando como STRING única.
+    Passar lista ao subprocess re-escapa aspas e corrompe o binPath=
+    quando o caminho contém espaços (C:\\Program Files\\...).
+    """
+    log.info("sc %s", args)
+    try:
+        r = subprocess.run(f"sc {args}", capture_output=True, text=True)
+        out = ((r.stdout or "") + (r.stderr or "")).strip()
+        if out:
+            log.info("sc rc=%s saida: %s", r.returncode, out[:400])
+        return r.returncode
+    except Exception as e:
+        log.error("sc falhou: %s", e)
+        return 1
 
 
 def install_service() -> int:
@@ -852,23 +864,49 @@ def install_service() -> int:
         return 1
     if not _is_admin():
         print("ERRO: execute como Administrador para instalar o serviço.")
+        log.error("install_service sem privilégio de administrador")
         return 2
-    exe = f'"{sys.executable}" --service' if getattr(sys, "frozen", False) \
-        else f'"{sys.executable}" "{Path(__file__).resolve()}" --service'
-    _sc("stop",   SERVICE_NAME)
-    _sc("delete", SERVICE_NAME)
-    rc = _sc("create", SERVICE_NAME,
-             f"binPath= {exe}",
-             "start= auto",
-             f"DisplayName= {SERVICE_DISPLAY}")
+
+    # binPath precisa chegar ao SCM como: "C:\caminho com espaco\exe" --service
+    # Na string do sc isso vira: binPath= "\"C:\...\exe\" --service"
+    if getattr(sys, "frozen", False):
+        exe_path = str(Path(sys.executable).resolve())
+        bin_value = f'\\"{exe_path}\\" --service'
+    else:
+        exe_path = sys.executable
+        script = str(Path(__file__).resolve())
+        bin_value = f'\\"{exe_path}\\" \\"{script}\\" --service'
+
+    _sc(f"stop {SERVICE_NAME}")
+    _sc(f"delete {SERVICE_NAME}")
+    time.sleep(2)  # sc delete é assíncrono; evita erro 1072 (marcado p/ exclusão)
+
+    rc = _sc(
+        f'create {SERVICE_NAME} binPath= "{bin_value}" start= auto '
+        f'DisplayName= "{SERVICE_DISPLAY}"'
+    )
     if rc != 0:
+        print(f"ERRO: sc create retornou {rc}. Veja {LOG_FILE}")
         return rc
-    _sc("description", SERVICE_NAME, SERVICE_DESC)
-    _sc("failure", SERVICE_NAME,
-        "reset= 86400",
-        "actions= restart/60000/restart/60000/restart/60000")
-    _sc("start", SERVICE_NAME)
+
+    # Verificação real: o serviço existe?
+    if _sc(f"query {SERVICE_NAME}") != 0:
+        print("ERRO: serviço não encontrado após o create.")
+        log.error("sc create retornou 0 mas o serviço não existe")
+        return 5
+
+    _sc(f'description {SERVICE_NAME} "{SERVICE_DESC}"')
+    _sc(f"failure {SERVICE_NAME} reset= 86400 "
+        f"actions= restart/60000/restart/60000/restart/60000")
+    rc_start = _sc(f"start {SERVICE_NAME}")
+    if rc_start != 0:
+        print(f"AVISO: serviço criado mas o start retornou {rc_start}. "
+              f"Veja {LOG_FILE} e o Visualizador de Eventos.")
+        log.error("sc start retornou %s", rc_start)
+        return 6
+
     print(f"Serviço '{SERVICE_NAME}' instalado e iniciado.")
+    log.info("Serviço instalado e iniciado com sucesso (binPath=%s)", bin_value)
     return 0
 
 
