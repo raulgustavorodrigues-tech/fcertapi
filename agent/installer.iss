@@ -80,6 +80,11 @@ begin
     // 3) Instala/inicia o serviço Windows via CLI do próprio agente
     Exec(ExpandConstant('{app}\{#ExeName}'), '--install-service', '',
          SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Log('FireSync --install-service rc=' + IntToStr(ResultCode));
+    // Marcador para diagnóstico do install.bat (silent não mostra MsgBox)
+    SaveStringToFile(
+      ExpandConstant('{commonappdata}\FireSync\install-service.rc'),
+      IntToStr(ResultCode), False);
   end;
 end;
 
