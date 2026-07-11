@@ -15,7 +15,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, Database as DatabaseIcon, Eye, EyeOff, Zap, RefreshCw, Pencil, Trash2, Copy, Check, X, Loader2, Activity, Download } from "lucide-react";
+import { Plus, Database as DatabaseIcon, Eye, EyeOff, Zap, RefreshCw, Pencil, Trash2, Copy, Check, X, Loader2, Activity, Download, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { formatDateTime, formatRelative } from "@/lib/format";
 
@@ -415,6 +415,16 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
     }
   }
 
+  async function downloadInstallPdf() {
+    try {
+      const { generateAgentInstallPdf } = await import("@/lib/agent-install-pdf");
+      generateAgentInstallPdf(db);
+      toast.success("PDF gerado — passo a passo de instalação");
+    } catch (e: any) {
+      toast.error(`Falha ao gerar PDF: ${e?.message ?? e}`);
+    }
+  }
+
 
 
   const agent = Array.isArray(db.agents) ? db.agents[0] : db.agents;
@@ -503,6 +513,9 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
         </Button>
         <Button size="sm" variant="outline" onClick={downloadProbe} title="Baixar probe de diagnóstico (somente leitura) para levantar requisitos pendentes">
           <Download className="h-3.5 w-3.5 mr-1" /> Probe
+        </Button>
+        <Button size="sm" variant="outline" onClick={downloadInstallPdf} title="PDF com passo a passo da instalação deste banco">
+          <FileText className="h-3.5 w-3.5 mr-1" /> Manual PDF
         </Button>
         <Button size="sm" variant="outline" onClick={onEdit}>
           <Pencil className="h-3.5 w-3.5" />
