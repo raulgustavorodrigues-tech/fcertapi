@@ -340,6 +340,32 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
     }
   }
 
+  function slugPart(s: string | null | undefined) {
+    return (s || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 48);
+  }
+  function buildFilename(kind: "agent" | "probe" | "installer") {
+    const company = slugPart(db.companies?.name);
+    const name = slugPart(db.name) || slugPart(db.id);
+    const base = [company, name].filter(Boolean).join("-") || "banco";
+    return `firesync-${kind}-${base}.zip`;
+  }
+  async function fetchAndSave(url: string, filename: string) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(await res.text());
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    const objUrl = URL.createObjectURL(blob);
+    a.href = objUrl; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(objUrl);
+  }
+
   async function downloadAgent() {
     if (!db.agent_token) {
       toast.error("Este banco não tem token. Edite o banco e gere/salve um token primeiro.");
@@ -348,17 +374,7 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
     try {
       toast.info("Gerando pacote do agente…");
       const url = `/api/public/agent-bundle?database_id=${encodeURIComponent(db.id)}&token=${encodeURIComponent(db.agent_token)}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(await res.text());
-      const blob = await res.blob();
-      const cd = res.headers.get("content-disposition") ?? "";
-      const m = /filename="?([^"]+)"?/i.exec(cd);
-      const filename = m?.[1] ?? `firesync-agent-${db.id}.zip`;
-      const a = document.createElement("a");
-      const objUrl = URL.createObjectURL(blob);
-      a.href = objUrl; a.download = filename;
-      document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(objUrl);
+      await fetchAndSave(url, buildFilename("agent"));
       toast.success("Pacote do agente baixado");
     } catch (e: any) {
       toast.error(`Falha ao baixar agente: ${e.message ?? e}`);
@@ -373,17 +389,7 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
     try {
       toast.info("Gerando probe de diagnóstico…");
       const url = `/api/public/agent-probe?database_id=${encodeURIComponent(db.id)}&token=${encodeURIComponent(db.agent_token)}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(await res.text());
-      const blob = await res.blob();
-      const cd = res.headers.get("content-disposition") ?? "";
-      const m = /filename="?([^"]+)"?/i.exec(cd);
-      const filename = m?.[1] ?? `firesync-probe-${db.id}.zip`;
-      const a = document.createElement("a");
-      const objUrl = URL.createObjectURL(blob);
-      a.href = objUrl; a.download = filename;
-      document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(objUrl);
+      await fetchAndSave(url, buildFilename("probe"));
       toast.success("Probe baixado — rode run.bat no PC do cliente");
     } catch (e: any) {
       toast.error(`Falha ao baixar probe: ${e.message ?? e}`);
@@ -398,17 +404,7 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
     try {
       toast.info("Gerando instalador Windows…");
       const url = `/api/public/agent-installer?database_id=${encodeURIComponent(db.id)}&token=${encodeURIComponent(db.agent_token)}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(await res.text());
-      const blob = await res.blob();
-      const cd = res.headers.get("content-disposition") ?? "";
-      const m = /filename="?([^"]+)"?/i.exec(cd);
-      const filename = m?.[1] ?? `firesync-agent-${db.id}-installer.zip`;
-      const a = document.createElement("a");
-      const objUrl = URL.createObjectURL(blob);
-      a.href = objUrl; a.download = filename;
-      document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(objUrl);
+      await fetchAndSave(url, buildFilename("installer"));
       toast.success("Instalador baixado — extraia e rode install.bat como Administrador");
     } catch (e: any) {
       toast.error(`Falha ao gerar instalador: ${e.message ?? e}`);
