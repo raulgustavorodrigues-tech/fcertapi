@@ -415,6 +415,16 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
     }
   }
 
+  async function downloadInstallPdf() {
+    try {
+      const { generateAgentInstallPdf } = await import("@/lib/agent-install-pdf");
+      generateAgentInstallPdf(db);
+      toast.success("PDF gerado — passo a passo de instalação");
+    } catch (e: any) {
+      toast.error(`Falha ao gerar PDF: ${e?.message ?? e}`);
+    }
+  }
+
 
 
   const agent = Array.isArray(db.agents) ? db.agents[0] : db.agents;
