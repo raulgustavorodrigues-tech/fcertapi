@@ -885,7 +885,14 @@ def uninstall_service() -> int:
 
 
 def run_as_service() -> int:
-    """Entry point chamado pelo Windows SCM (via `sc start FireSyncAgent`)."""
+    """Entry point chamado pelo Windows SCM (via `sc start FireSyncAgent`).
+
+    Quando o binário PyInstaller é iniciado pelo SCM com `--service`, o
+    processo precisa se conectar ao Service Control Manager via
+    StartServiceCtrlDispatcher() dentro de ~30s ou o Windows aborta com
+    o erro 1053 ("The service did not respond to the start or control
+    request in a timely fashion").
+    """
     try:
         import win32service                # type: ignore
         import win32serviceutil            # type: ignore
@@ -904,11 +911,15 @@ def run_as_service() -> int:
         _svc_display_name_ = SERVICE_DISPLAY
         _svc_description_ = SERVICE_DESC
 
+        def __init__(self, args):
+            win32serviceutil.ServiceFramework.__init__(self, args)
+            self._stop_evt = stop_evt
+
         def SvcStop(self):
             self.ReportServiceStatus(win32service.SERVICE_STOP_PENDING)
             global _STOP
             _STOP = True
-            win32event.SetEvent(stop_evt)
+            win32event.SetEvent(self._stop_evt)
 
         def SvcDoRun(self):
             servicemanager.LogMsg(
@@ -916,9 +927,26 @@ def run_as_service() -> int:
                 servicemanager.PYS_SERVICE_STARTED,
                 (self._svc_name_, ""),
             )
-            run_loop(lambda: _STOP)
+            try:
+                run_loop(lambda: _STOP)
+            except Exception as e:
+                log.exception("Serviço encerrou por exceção: %s", e)
+                servicemanager.LogErrorMsg(f"FireSyncAgent crash: {e}")
 
-    win32serviceutil.HandleCommandLine(_Svc, argv=[sys.argv[0]])
+    # PyInstaller frozen binary: precisamos usar o dispatcher direto,
+    # NÃO HandleCommandLine (que só interpreta argv como install/start/debug/…).
+    try:
+        servicemanager.Initialize()
+        servicemanager.PrepareToHostSingle(_Svc)
+        servicemanager.StartServiceCtrlDispatcher()
+    except Exception as e:
+        # Log detalhado — o SCM não mostra stack trace útil.
+        log.exception("StartServiceCtrlDispatcher falhou: %s", e)
+        try:
+            servicemanager.LogErrorMsg(f"FireSyncAgent dispatcher error: {e}")
+        except Exception:
+            pass
+        return 1
     return 0
 
 
