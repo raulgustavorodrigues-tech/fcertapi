@@ -24,7 +24,7 @@ function err(status: number, code: string, message: string, details?: unknown) {
 const logEntry = z.object({
   level: z.enum(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]),
   message: z.string().min(1).max(4000),
-  context: z.record(z.any()).optional(),
+  context: z.record(z.any()).nullable().optional(),
   timestamp: z.string().optional(),
 });
 
@@ -33,7 +33,7 @@ const resultEntry = z.object({
   command_type: z.string().min(1).max(64),
   status: z.enum(["success", "error"]),
   result: z.any().optional(),
-  error_message: z.string().max(2000).optional(),
+  error_message: z.string().max(2000).nullable().optional(),
   duration_ms: z.number().int().min(0).optional(),
   completed_at: z.string().optional(),
 });

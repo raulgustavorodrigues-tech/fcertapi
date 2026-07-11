@@ -138,7 +138,7 @@ function Page() {
       setStep("agent_online", {
         status: "error",
         detail: hb ? `Último heartbeat ${tone.label}` : "Agente nunca enviou heartbeat",
-        hint: "Inicie o agente (run.bat ou serviço NSSM). Verifique se o processo Python está rodando e se há saída HTTPS liberada no firewall.",
+        hint: "Agente offline. Verifique se o serviço FireSyncAgent está em execução (sc query FireSyncAgent) e se há saída HTTPS liberada.",
       });
       ["net_dns", "net_https", "net_port", "file_fdb", "auth_sysdba", "db_reach", "test_sql"].forEach((k) =>
         setStep(k, { status: "skip", detail: "Aguardando agente ficar online" }),
