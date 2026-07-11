@@ -88,60 +88,94 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}
 LOG_LEVEL=INFO
 `;
 
-        const installBat = `@echo off
+        // IMPORTANTE: .bat DEVE ter line endings CRLF e SEM caracteres
+        // acentuados fora de comentarios REM — cmd.exe fecha o console
+        // silenciosamente quando encontra `^` de continuacao com LF-only
+        // ou UTF-8 sem chcp. Mantemos o corpo em ASCII puro e convertemos
+        // para CRLF antes de zipar (ver toCrlf abaixo).
+        const installBatLf = `@echo off
 REM ============================================================
-REM  FireSync LocalBridge — instalação (serviço Windows)
-REM  Empresa: ${db.companies?.name ?? "-"}
-REM  Banco:   ${db.name}
+REM  FireSync LocalBridge - instalacao (servico Windows)
+REM  Empresa: ${(db.companies?.name ?? "-").replace(/[^\x20-\x7e]/g, "?")}
+REM  Banco:   ${(db.name ?? "-").replace(/[^\x20-\x7e]/g, "?")}
 REM ============================================================
-setlocal
+setlocal EnableExtensions EnableDelayedExpansion
 cd /d "%~dp0"
+
+echo.
+echo ===== FireSync LocalBridge - instalador =====
+echo.
 
 net session >nul 2>&1
 if errorlevel 1 (
+    echo ERRO: execute este arquivo como Administrador.
+    echo        [botao direito] ^> "Executar como administrador"
     echo.
-    echo ERRO: rode este arquivo como Administrador.
-    echo       [clique com botao direito] ^> "Executar como administrador"
-    echo.
-    pause & exit /b 1
+    pause
+    exit /b 1
 )
 
-set INSTALLER_URL=${installerUrl}
-set INSTALLER_EXE=%~dp0firesync-agent-setup.exe
-set ENVFILE=%~dp0firesync-agent.env
+set "INSTALLER_URL=${installerUrl}"
+set "INSTALLER_EXE=%~dp0firesync-agent-setup.exe"
+set "ENVFILE=%~dp0firesync-agent.env"
 
 echo [1/3] Baixando instalador do FireSync Agent...
-powershell -NoProfile -Command ^
-  "$ProgressPreference='SilentlyContinue';" ^
-  "Invoke-WebRequest -Uri '%INSTALLER_URL%' -OutFile '%INSTALLER_EXE%' -UseBasicParsing"
-if not exist "%INSTALLER_EXE%" (
-    echo Falha ao baixar %INSTALLER_URL%
-    pause & exit /b 2
-)
+echo       URL: %INSTALLER_URL%
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ProgressPreference='SilentlyContinue'; try { Invoke-WebRequest -Uri '%INSTALLER_URL%' -OutFile '%INSTALLER_EXE%' -UseBasicParsing } catch { Write-Host $_.Exception.Message; exit 1 }"
+if errorlevel 1 goto :download_fail
+if not exist "%INSTALLER_EXE%" goto :download_fail
 
 echo [2/3] Instalando (silencioso) e registrando servico...
 "%INSTALLER_EXE%" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /ENVFILE="%ENVFILE%"
-if errorlevel 1 (
-    echo Falha na instalacao. Codigo: %ERRORLEVEL%
-    pause & exit /b 3
+set "RC=%ERRORLEVEL%"
+if not "%RC%"=="0" (
+    echo.
+    echo ERRO na instalacao. Codigo: %RC%
+    echo Verifique o log do Inno Setup em %TEMP%\Setup Log*.txt
+    echo.
+    pause
+    exit /b 3
 )
 
 echo [3/3] Verificando servico FireSyncAgent...
+sc query FireSyncAgent >nul 2>&1
+if errorlevel 1 (
+    echo AVISO: servico FireSyncAgent nao foi encontrado apos a instalacao.
+    echo Tente reinstalar ou verifique o log do Inno Setup.
+    echo.
+    pause
+    exit /b 4
+)
+
 sc query FireSyncAgent | findstr /I "RUNNING" >nul
 if errorlevel 1 (
+    echo Iniciando servico...
     sc start FireSyncAgent
 )
 
 echo.
 echo ============================================================
-echo  Instalacao concluida. O agente vai iniciar automaticamente
-echo  com o Windows e manter comunicacao continua com o Hub.
+echo  Instalacao concluida. O agente sobe com o Windows e mantem
+echo  comunicacao continua com o Hub.
 echo.
 echo  Logs: C:\\ProgramData\\FireSync\\logs\\firesync-agent.log
 echo ============================================================
+echo.
 pause
-endlocal
+exit /b 0
+
+:download_fail
+echo.
+echo ERRO: falha ao baixar o instalador.
+echo URL: %INSTALLER_URL%
+echo Verifique sua conexao com a internet e proxies/firewall.
+echo.
+pause
+exit /b 2
 `;
+        // Converte para CRLF (obrigatorio para .bat em Windows)
+        const installBat = installBatLf.replace(/\r?\n/g, "\r\n");
+
 
         const readme = `FireSync LocalBridge — Instalação
 =================================
