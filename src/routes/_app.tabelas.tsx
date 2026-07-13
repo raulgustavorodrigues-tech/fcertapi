@@ -72,6 +72,33 @@ function Page() {
 
   const selectedDb = databases.find((d: any) => d.id === databaseId);
 
+  // Carrega sync_tables atual do banco selecionado
+  const { data: dbRow } = useQuery({
+    queryKey: ["database-sync-tables", databaseId],
+    queryFn: async () => {
+      if (!databaseId) return null;
+      const { data } = await supabase
+        .from("databases")
+        .select("id, name, sync_tables")
+        .eq("id", databaseId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!databaseId,
+  });
+
+  // Estado local do escopo de sincronização (modo + set)
+  const [syncMode, setSyncMode] = useState<"ALL" | "SELECTED">("ALL");
+  const [syncSet, setSyncSet] = useState<Set<string>>(new Set());
+  const [savingSync, setSavingSync] = useState(false);
+
+  // Sincroniza estado local quando o banco/registro muda
+  useEffect(() => {
+    const parsed = parseSyncTables(dbRow?.sync_tables);
+    setSyncMode(parsed.mode);
+    setSyncSet(parsed.set);
+  }, [dbRow?.id, dbRow?.sync_tables]);
+
   const tables: any[] = useMemo(() => {
     if (cacheRow?.tables && Array.isArray(cacheRow.tables)) {
       return cacheRow.tables as any[];
@@ -83,6 +110,66 @@ function Page() {
     if (!databaseId) return [];
     return tables.filter((t) => t.name.toLowerCase().includes(search.toLowerCase()));
   }, [databaseId, search, tables]);
+
+  // Marca se uma tabela está no escopo (ALL ⇒ todas; SELECTED ⇒ set)
+  function isInScope(name: string): boolean {
+    if (syncMode === "ALL") return true;
+    return syncSet.has(name.toUpperCase());
+  }
+
+  function toggleTable(name: string, checked: boolean) {
+    const key = name.toUpperCase();
+    const next = new Set(syncSet);
+    if (checked) next.add(key); else next.delete(key);
+    setSyncSet(next);
+    if (syncMode !== "SELECTED") setSyncMode("SELECTED");
+  }
+
+  function selectAllVisible() {
+    const next = new Set(syncSet);
+    for (const t of filteredTables) next.add(String(t.name).toUpperCase());
+    setSyncSet(next);
+    setSyncMode("SELECTED");
+  }
+  function clearAllVisible() {
+    const next = new Set(syncSet);
+    for (const t of filteredTables) next.delete(String(t.name).toUpperCase());
+    setSyncSet(next);
+    setSyncMode("SELECTED");
+  }
+
+  const originalParsed = parseSyncTables(dbRow?.sync_tables);
+  const currentSerialized = serializeSyncTables(syncMode, syncSet);
+  const originalSerialized = serializeSyncTables(originalParsed.mode, originalParsed.set);
+  const isDirty = currentSerialized !== originalSerialized;
+
+  async function saveSyncScope() {
+    if (!databaseId) return;
+    if (syncMode === "SELECTED" && syncSet.size === 0) {
+      toast.error("Selecione ao menos uma tabela ou volte para o modo ‘Sincronizar todas’.");
+      return;
+    }
+    setSavingSync(true);
+    try {
+      const value = syncMode === "ALL" ? "ALL" : serializeSyncTables("SELECTED", syncSet);
+      const { error } = await supabase
+        .from("databases")
+        .update({ sync_tables: value })
+        .eq("id", databaseId);
+      if (error) throw error;
+      toast.success(
+        syncMode === "ALL"
+          ? "Escopo atualizado: sincronizar TODAS as tabelas."
+          : `Escopo atualizado: ${syncSet.size} tabela(s) selecionada(s).`,
+      );
+      qc.invalidateQueries({ queryKey: ["database-sync-tables", databaseId] });
+      qc.invalidateQueries({ queryKey: ["databases"] });
+    } catch (e: any) {
+      toast.error(e.message ?? "Falha ao salvar seleção");
+    } finally {
+      setSavingSync(false);
+    }
+  }
 
   async function reloadSchema() {
     if (!databaseId) return;
