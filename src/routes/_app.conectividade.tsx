@@ -83,11 +83,28 @@ function Page() {
   const { data: databases = [] } = useQuery({
     queryKey: ["databases-list-conn"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data: dbs } = await supabase
         .from("databases")
-        .select("id, name, agent_uid, host, port, companies(name), agents(status, last_heartbeat_at, tunnel_url, agent_version)")
+        .select("id, name, agent_uid, host, port, companies(name)")
         .order("name");
-      return data ?? [];
+      const list = dbs ?? [];
+      const uids = Array.from(new Set(list.map((d: any) => d.agent_uid).filter(Boolean))) as string[];
+      const agentsByUid: Record<string, any> = {};
+      const agentsByDbId: Record<string, any> = {};
+      if (uids.length > 0) {
+        const { data: ags } = await supabase
+          .from("agents")
+          .select("agent_uid, database_id, status, last_heartbeat_at, tunnel_url, agent_version")
+          .in("agent_uid", uids);
+        (ags ?? []).forEach((a: any) => {
+          if (a.agent_uid) agentsByUid[a.agent_uid] = a;
+          if (a.database_id) agentsByDbId[a.database_id] = a;
+        });
+      }
+      return list.map((d: any) => ({
+        ...d,
+        agents: (d.agent_uid && agentsByUid[d.agent_uid]) || agentsByDbId[d.id] || null,
+      }));
     },
   });
 
