@@ -280,7 +280,7 @@ function Page() {
                 que a API deve replicar. O agente aplica o filtro na próxima sincronização — sem redeploy.
               </p>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 flex-wrap">
               <div className="flex items-center gap-2">
                 <Switch
                   id="sync-all"
@@ -304,6 +304,35 @@ function Page() {
                 Salvar seleção
               </Button>
             </div>
+          </div>
+
+          {/* Filtro de busca dedicado ao escopo de sincronização */}
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <div className="relative flex-1 min-w-[240px] max-w-md">
+              <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar tabela para incluir/excluir da sincronização…"
+                className="pl-8 font-mono text-xs"
+                disabled={syncMode === "ALL"}
+              />
+            </div>
+            <span className="text-[10px] text-muted-foreground font-mono">
+              {search
+                ? `${filteredTables.length} de ${tables.length} tabela(s) visível(is)`
+                : `${tables.length} tabela(s) no schema`}
+            </span>
+            {search && (
+              <Button size="sm" variant="ghost" onClick={() => setSearch("")} className="text-[10px] h-7">
+                Limpar filtro
+              </Button>
+            )}
+            {syncMode === "SELECTED" && (
+              <span className="text-[10px] text-muted-foreground font-mono ml-auto">
+                Dica: filtre e use <span className="text-primary">Marcar visíveis</span> para selecionar em lote.
+              </span>
+            )}
           </div>
           {syncMode === "SELECTED" && syncSet.size > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
