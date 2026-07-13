@@ -33,7 +33,8 @@ import sys
 import time
 import traceback
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, time as dt_time, timezone
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -714,7 +715,7 @@ def cmd_run_query(payload: Dict[str, Any]) -> Dict[str, Any]:
         cur = con.cursor()
         cur.execute(sql)
         cols = [d[0] for d in cur.description] if cur.description else []
-        rows = [list(r) for r in cur.fetchmany(max_rows + 1)]
+        rows = [[_json_safe_value(v) for v in r] for r in cur.fetchmany(max_rows + 1)]
         truncated = len(rows) > max_rows
         if truncated:
             rows = rows[:max_rows]
@@ -731,6 +732,22 @@ def cmd_run_query(payload: Dict[str, Any]) -> Dict[str, Any]:
         except Exception: pass
         try: con.close()
         except Exception: pass
+
+
+def _json_safe_value(value: Any) -> Any:
+    """Converte tipos do Firebird/fdb para valores seguros em JSON."""
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, Decimal):
+        return str(value)
+    if isinstance(value, (datetime, date, dt_time)):
+        return value.isoformat()
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        try:
+            return bytes(value).decode(CFG.get("db_charset") or "utf-8", errors="replace")
+        except Exception:
+            return bytes(value).hex()
+    return str(value)
 
 
 def handle_command(cmd: Dict[str, Any]) -> None:

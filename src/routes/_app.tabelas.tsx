@@ -33,6 +33,10 @@ function serializeSyncTables(mode: "ALL" | "SELECTED", set: Set<string>): string
   return arr.length === 0 ? "" : arr.join(",");
 }
 
+function getTableRowCount(table: any): number {
+  return Number(table?.row_count ?? table?.rows ?? 0);
+}
+
 export const Route = createFileRoute("/_app/tabelas")({ component: Page });
 
 // MOCK_SCHEMA removido — o schema agora vem exclusivamente de schema_cache
@@ -401,7 +405,9 @@ function Page() {
                             {inScope && syncMode === "SELECTED" && (
                               <Badge variant="success" className="text-[9px] font-mono px-1 py-0">SYNC</Badge>
                             )}
-                            {t.rows != null && <span className="text-[10px] text-muted-foreground">{Number(t.rows).toLocaleString("pt-BR")}</span>}
+                            {(t.row_count != null || t.rows != null) && (
+                              <span className="text-[10px] text-muted-foreground">{getTableRowCount(t).toLocaleString("pt-BR")}</span>
+                            )}
                           </div>
                         </div>
                         <div className="text-[10px] text-muted-foreground mt-0.5">{t.columns?.length ?? 0} colunas</div>
@@ -425,7 +431,7 @@ function Page() {
                   <div>
                     <div className="font-mono text-base font-semibold text-primary">{selected.name}</div>
                     <div className="text-xs text-muted-foreground mt-0.5 font-mono">
-                      {(selected.rows ?? 0).toLocaleString("pt-BR")} registros · {selected.columns?.length ?? 0} colunas
+                      {getTableRowCount(selected).toLocaleString("pt-BR")} registros · {selected.columns?.length ?? 0} colunas
                     </div>
                   </div>
                   {cacheRow && (
