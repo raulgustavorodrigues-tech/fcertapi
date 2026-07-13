@@ -257,6 +257,73 @@ function Page() {
         )}
       </Card>
 
+      {databaseId && (
+        <Card className="p-4 bg-card border-border">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <ListChecks className="h-4 w-4 text-primary" />
+                <h3 className="font-mono text-sm font-semibold">Escopo de sincronização</h3>
+                {syncMode === "ALL" ? (
+                  <Badge variant="success" className="text-[10px] font-mono">TODAS AS TABELAS</Badge>
+                ) : (
+                  <Badge variant="info" className="text-[10px] font-mono">
+                    {syncSet.size} SELECIONADA{syncSet.size === 1 ? "" : "S"}
+                  </Badge>
+                )}
+                {isDirty && (
+                  <Badge variant="warning" className="text-[10px] font-mono">ALTERAÇÕES NÃO SALVAS</Badge>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground max-w-2xl">
+                Bancos com milhares de tabelas ficam lentos ao sincronizar tudo. Escolha aqui somente as tabelas
+                que a API deve replicar. O agente aplica o filtro na próxima sincronização — sem redeploy.
+              </p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="sync-all"
+                  checked={syncMode === "ALL"}
+                  onCheckedChange={(v) => setSyncMode(v ? "ALL" : "SELECTED")}
+                />
+                <Label htmlFor="sync-all" className="text-xs cursor-pointer">Sincronizar todas</Label>
+              </div>
+              {syncMode === "SELECTED" && filteredTables.length > 0 && (
+                <>
+                  <Button size="sm" variant="outline" onClick={selectAllVisible}>
+                    <CheckSquare className="h-3.5 w-3.5 mr-1.5" /> Marcar visíveis
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={clearAllVisible}>
+                    <Square className="h-3.5 w-3.5 mr-1.5" /> Desmarcar visíveis
+                  </Button>
+                </>
+              )}
+              <Button size="sm" onClick={saveSyncScope} disabled={!isDirty || savingSync}>
+                {savingSync ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+                Salvar seleção
+              </Button>
+            </div>
+          </div>
+          {syncMode === "SELECTED" && syncSet.size > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {Array.from(syncSet).sort().map((n) => (
+                <Badge key={n} variant="muted" className="font-mono text-[10px] gap-1">
+                  {n}
+                  <button
+                    onClick={() => {
+                      const next = new Set(syncSet); next.delete(n); setSyncSet(next);
+                    }}
+                    className="ml-1 hover:text-destructive"
+                    title="Remover"
+                  >×</button>
+                </Badge>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
+
       {!databaseId ? (
         <Card className="p-12 text-center bg-card border-border">
           <TableIcon className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
