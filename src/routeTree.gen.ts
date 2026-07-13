@@ -29,6 +29,7 @@ import { Route as ApiPublicAgentVersionRouteImport } from './routes/api/public/a
 import { Route as ApiPublicAgentReportRouteImport } from './routes/api/public/agent-report'
 import { Route as ApiPublicAgentProbeRouteImport } from './routes/api/public/agent-probe'
 import { Route as ApiPublicAgentInstallerRouteImport } from './routes/api/public/agent-installer'
+import { Route as ApiPublicAgentDownloadRouteImport } from './routes/api/public/agent-download'
 import { Route as ApiPublicAgentBundleRouteImport } from './routes/api/public/agent-bundle'
 
 const LoginRoute = LoginRouteImport.update({
@@ -130,6 +131,11 @@ const ApiPublicAgentInstallerRoute = ApiPublicAgentInstallerRouteImport.update({
   path: '/api/public/agent-installer',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAgentDownloadRoute = ApiPublicAgentDownloadRouteImport.update({
+  id: '/api/public/agent-download',
+  path: '/api/public/agent-download',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicAgentBundleRoute = ApiPublicAgentBundleRouteImport.update({
   id: '/api/public/agent-bundle',
   path: '/api/public/agent-bundle',
@@ -148,6 +154,7 @@ export interface FileRoutesByFullPath {
   '/sincronizacao': typeof AppSincronizacaoRoute
   '/tabelas': typeof AppTabelasRoute
   '/api/public/agent-bundle': typeof ApiPublicAgentBundleRoute
+  '/api/public/agent-download': typeof ApiPublicAgentDownloadRoute
   '/api/public/agent-installer': typeof ApiPublicAgentInstallerRoute
   '/api/public/agent-probe': typeof ApiPublicAgentProbeRoute
   '/api/public/agent-report': typeof ApiPublicAgentReportRoute
@@ -170,6 +177,7 @@ export interface FileRoutesByTo {
   '/tabelas': typeof AppTabelasRoute
   '/': typeof AppIndexRoute
   '/api/public/agent-bundle': typeof ApiPublicAgentBundleRoute
+  '/api/public/agent-download': typeof ApiPublicAgentDownloadRoute
   '/api/public/agent-installer': typeof ApiPublicAgentInstallerRoute
   '/api/public/agent-probe': typeof ApiPublicAgentProbeRoute
   '/api/public/agent-report': typeof ApiPublicAgentReportRoute
@@ -194,6 +202,7 @@ export interface FileRoutesById {
   '/_app/tabelas': typeof AppTabelasRoute
   '/_app/': typeof AppIndexRoute
   '/api/public/agent-bundle': typeof ApiPublicAgentBundleRoute
+  '/api/public/agent-download': typeof ApiPublicAgentDownloadRoute
   '/api/public/agent-installer': typeof ApiPublicAgentInstallerRoute
   '/api/public/agent-probe': typeof ApiPublicAgentProbeRoute
   '/api/public/agent-report': typeof ApiPublicAgentReportRoute
@@ -218,6 +227,7 @@ export interface FileRouteTypes {
     | '/sincronizacao'
     | '/tabelas'
     | '/api/public/agent-bundle'
+    | '/api/public/agent-download'
     | '/api/public/agent-installer'
     | '/api/public/agent-probe'
     | '/api/public/agent-report'
@@ -240,6 +250,7 @@ export interface FileRouteTypes {
     | '/tabelas'
     | '/'
     | '/api/public/agent-bundle'
+    | '/api/public/agent-download'
     | '/api/public/agent-installer'
     | '/api/public/agent-probe'
     | '/api/public/agent-report'
@@ -263,6 +274,7 @@ export interface FileRouteTypes {
     | '/_app/tabelas'
     | '/_app/'
     | '/api/public/agent-bundle'
+    | '/api/public/agent-download'
     | '/api/public/agent-installer'
     | '/api/public/agent-probe'
     | '/api/public/agent-report'
@@ -278,6 +290,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
   ApiPublicAgentBundleRoute: typeof ApiPublicAgentBundleRoute
+  ApiPublicAgentDownloadRoute: typeof ApiPublicAgentDownloadRoute
   ApiPublicAgentInstallerRoute: typeof ApiPublicAgentInstallerRoute
   ApiPublicAgentProbeRoute: typeof ApiPublicAgentProbeRoute
   ApiPublicAgentReportRoute: typeof ApiPublicAgentReportRoute
@@ -431,6 +444,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAgentInstallerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/agent-download': {
+      id: '/api/public/agent-download'
+      path: '/api/public/agent-download'
+      fullPath: '/api/public/agent-download'
+      preLoaderRoute: typeof ApiPublicAgentDownloadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/agent-bundle': {
       id: '/api/public/agent-bundle'
       path: '/api/public/agent-bundle'
@@ -471,6 +491,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
   ApiPublicAgentBundleRoute: ApiPublicAgentBundleRoute,
+  ApiPublicAgentDownloadRoute: ApiPublicAgentDownloadRoute,
   ApiPublicAgentInstallerRoute: ApiPublicAgentInstallerRoute,
   ApiPublicAgentProbeRoute: ApiPublicAgentProbeRoute,
   ApiPublicAgentReportRoute: ApiPublicAgentReportRoute,
@@ -484,13 +505,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
