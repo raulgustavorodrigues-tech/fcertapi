@@ -347,21 +347,39 @@ function Page() {
                   </p>
                 </div>
               ) : (
-                filteredTables.map((t: any) => (
-                  <button
-                    key={t.name}
-                    onClick={() => setSelected(t)}
-                    className={`w-full text-left p-2.5 rounded border transition-colors font-mono text-xs cursor-pointer ${
-                      selected?.name === t.name ? "border-primary bg-primary/10 text-primary" : "border-border bg-background/40 hover:border-primary/40"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold truncate">{t.name}</span>
-                      {t.rows != null && <span className="text-[10px] text-muted-foreground">{Number(t.rows).toLocaleString("pt-BR")}</span>}
+                filteredTables.map((t: any) => {
+                  const inScope = isInScope(t.name);
+                  return (
+                    <div
+                      key={t.name}
+                      className={`flex items-center gap-2 p-2.5 rounded border transition-colors font-mono text-xs ${
+                        selected?.name === t.name ? "border-primary bg-primary/10 text-primary" : "border-border bg-background/40 hover:border-primary/40"
+                      }`}
+                    >
+                      <Checkbox
+                        checked={syncMode === "ALL" ? true : syncSet.has(String(t.name).toUpperCase())}
+                        disabled={syncMode === "ALL"}
+                        onCheckedChange={(v) => toggleTable(t.name, Boolean(v))}
+                        title={syncMode === "ALL" ? "Modo ‘Todas as tabelas’ ativo — desligue para selecionar" : "Incluir/remover do escopo de sincronização"}
+                      />
+                      <button
+                        onClick={() => setSelected(t)}
+                        className="flex-1 text-left cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-semibold truncate">{t.name}</span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {inScope && syncMode === "SELECTED" && (
+                              <Badge variant="success" className="text-[9px] font-mono px-1 py-0">SYNC</Badge>
+                            )}
+                            {t.rows != null && <span className="text-[10px] text-muted-foreground">{Number(t.rows).toLocaleString("pt-BR")}</span>}
+                          </div>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground mt-0.5">{t.columns?.length ?? 0} colunas</div>
+                      </button>
                     </div>
-                    <div className="text-[10px] text-muted-foreground mt-0.5">{t.columns?.length ?? 0} colunas</div>
-                  </button>
-                ))
+                  );
+                })
               )}
             </div>
           </Card>
