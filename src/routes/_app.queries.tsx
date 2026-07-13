@@ -86,6 +86,15 @@ function rowsToCSV(cols: string[], rows: any[]): string {
   return [cols.join(","), ...rows.map((r) => cols.map((c) => esc(r[c])).join(","))].join("\n");
 }
 
+function normalizeResultRows(cols: string[], rows: any[]): Record<string, any>[] {
+  return rows.map((row) => {
+    if (Array.isArray(row)) {
+      return Object.fromEntries(cols.map((col, index) => [col, row[index]]));
+    }
+    return row ?? {};
+  });
+}
+
 export const Route = createFileRoute("/_app/queries")({ component: QueriesPage });
 
 const SQL_KEYWORDS = /\b(SELECT|FROM|WHERE|INSERT|INTO|VALUES|UPDATE|SET|DELETE|JOIN|LEFT|RIGHT|INNER|OUTER|ON|AS|AND|OR|NOT|NULL|IS|IN|LIKE|BETWEEN|ORDER BY|GROUP BY|HAVING|LIMIT|OFFSET|DISTINCT|COUNT|SUM|AVG|MIN|MAX|CREATE|TABLE|ALTER|DROP|INDEX|VIEW|UNION|ALL|CASE|WHEN|THEN|ELSE|END|FIRST|SKIP|GENERATOR|TRIGGER|PROCEDURE)\b/gi;
@@ -407,9 +416,10 @@ function RunnerDialog({ query, onClose, onRan }: any) {
       const row = await awaitCommandResult(command_id, { timeoutMs: 60_000, intervalMs: 1500 });
       if (row.status === "success" && row.result) {
         const r = row.result;
-        const cols = r.columns ?? Object.keys(r.rows?.[0] ?? {});
-        const rows = r.rows ?? [];
-        setResult({ ok: true, cols, rows, total: r.total ?? rows.length, duration: row.duration_ms ?? 0 });
+        const rawRows = r.rows ?? [];
+        const cols = r.columns ?? Object.keys(rawRows?.[0] ?? {});
+        const rows = normalizeResultRows(cols, rawRows);
+        setResult({ ok: true, cols, rows, total: r.row_count ?? r.total ?? rows.length, duration: row.duration_ms ?? 0 });
         await supabase.from("saved_queries").update({ last_run_at: new Date().toISOString() }).eq("id", query.id);
         onRan();
         toast.success(`${rows.length} registros em ${row.duration_ms ?? 0}ms`);
