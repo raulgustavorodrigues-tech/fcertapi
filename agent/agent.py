@@ -488,7 +488,20 @@ def heartbeat() -> List[Dict[str, Any]]:
             # oportunidade de drenar fila e checar update
             queue_flush()
             check_auto_update()
-            return (r.json() or {}).get("pending_commands", []) or []
+            body = r.json() or {}
+            # Config dinâmica vinda do hub (permite trocar SYNC_TABLES
+            # sem reinstalar o agente).
+            cfg = body.get("config") or {}
+            new_scope = cfg.get("sync_tables")
+            if isinstance(new_scope, str) and new_scope.strip():
+                if new_scope != CFG.get("sync_tables"):
+                    log.info("sync_tables atualizado via heartbeat: %r -> %r",
+                             CFG.get("sync_tables"), new_scope)
+                    CFG["sync_tables"] = new_scope
+            new_interval = cfg.get("sync_interval")
+            if isinstance(new_interval, int) and new_interval > 0:
+                CFG["sync_interval"] = new_interval
+            return body.get("pending_commands", []) or []
     except Exception as e:
         log.warning("heartbeat falhou: %s", e)
     return []

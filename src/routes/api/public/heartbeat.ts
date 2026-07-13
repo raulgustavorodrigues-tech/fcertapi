@@ -62,7 +62,7 @@ export const Route = createFileRoute("/api/public/heartbeat")({
 
         const { data: db } = await supabaseAdmin
           .from("databases")
-          .select("id, agent_token")
+          .select("id, agent_token, sync_tables, sync_interval")
           .eq("agent_uid", data.agent_uid)
           .maybeSingle();
 
@@ -170,6 +170,11 @@ export const Route = createFileRoute("/api/public/heartbeat")({
             server_time: now,
             pending_commands: pending,
             next_heartbeat_in: interval,
+            // Config dinâmica: o agente v1.4+ aplica sem reinstalar
+            config: {
+              sync_tables: (db as any).sync_tables ?? "ALL",
+              sync_interval: (db as any).sync_interval ?? null,
+            },
           },
           { headers: CORS },
         );
