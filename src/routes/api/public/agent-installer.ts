@@ -116,7 +116,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-set "INSTALLER_URL=${installerUrl}"
+set "INSTALLER_URL=${origin}/api/public/agent-download?token=${db.agent_token}&database_id=${db.id}"
 set "INSTALLER_EXE=%~dp0firesync-agent-setup.exe"
 set "ENVFILE=%~dp0firesync-agent.env"
 
