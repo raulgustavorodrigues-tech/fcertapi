@@ -31,7 +31,7 @@ type Step = {
   hint?: string;
 };
 
-const TIMEOUT_SECONDS = 60;
+const TIMEOUT_SECONDS = 120;
 
 function StepRow({ s, idx }: { s: Step; idx: number }) {
   const Icon = s.icon;
