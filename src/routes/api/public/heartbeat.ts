@@ -62,7 +62,7 @@ export const Route = createFileRoute("/api/public/heartbeat")({
 
         const { data: db } = await supabaseAdmin
           .from("databases")
-          .select("id, agent_token")
+          .select("id, agent_token, sync_tables, sync_interval")
           .eq("agent_uid", data.agent_uid)
           .maybeSingle();
 
