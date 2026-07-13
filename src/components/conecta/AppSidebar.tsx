@@ -10,6 +10,7 @@ import {
   Settings,
   Server,
   ShieldCheck,
+  HeartPulse,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,7 @@ const items: NavItem[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/empresas", label: "Empresas", icon: Building2 },
   { to: "/bancos", label: "Bancos de Dados", icon: Database },
+  { to: "/agente", label: "Agente FireSync", icon: HeartPulse },
   { to: "/tabelas", label: "Tabelas", icon: TableIcon },
   { to: "/queries", label: "Queries", icon: Code2 },
   { to: "/conectividade", label: "Conectividade", icon: Wifi },
