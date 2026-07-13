@@ -1,19 +1,37 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Table as TableIcon, Search, Key, Columns3, RefreshCw, Loader2, Clock, Plus, Pencil } from "lucide-react";
+import { Table as TableIcon, Search, Key, Columns3, RefreshCw, Loader2, Clock, Plus, Pencil, Save, CheckSquare, Square, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import { formatRelative } from "@/lib/format";
 import { enqueueCommand, awaitCommandResult } from "@/lib/commands";
 import { SchemaEditorDialog } from "@/components/conecta/SchemaEditorDialog";
+
+/** Parse sync_tables ("ALL" ou "T1,T2,T3") num Set normalizado em UPPERCASE. */
+function parseSyncTables(raw: string | null | undefined): { mode: "ALL" | "SELECTED"; set: Set<string> } {
+  const v = (raw ?? "ALL").trim();
+  if (!v || v.toUpperCase() === "ALL") return { mode: "ALL", set: new Set() };
+  const set = new Set(
+    v.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean),
+  );
+  return { mode: "SELECTED", set };
+}
+function serializeSyncTables(mode: "ALL" | "SELECTED", set: Set<string>): string {
+  if (mode === "ALL") return "ALL";
+  const arr = Array.from(set).map((s) => s.toUpperCase()).sort();
+  return arr.length === 0 ? "" : arr.join(",");
+}
 
 export const Route = createFileRoute("/_app/tabelas")({ component: Page });
 
