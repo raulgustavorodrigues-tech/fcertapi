@@ -290,7 +290,7 @@ function Page() {
   }
 
   const selectedDb: any = databases.find((d: any) => d.id === target);
-  const waitPct = Math.min(100, (waitElapsed / 30) * 100);
+  const waitPct = Math.min(100, (waitElapsed / TIMEOUT_SECONDS) * 100);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
