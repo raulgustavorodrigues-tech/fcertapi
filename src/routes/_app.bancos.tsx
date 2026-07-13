@@ -678,6 +678,11 @@ function DatabaseDialog({
         <div className="space-y-1.5">
           <Label>Tabelas para sincronizar</Label>
           <Input value={form.sync_tables} onChange={(e) => setForm({ ...form, sync_tables: e.target.value })} placeholder="ALL ou CLIENTES,PRODUTOS" />
+          <p className="text-[11px] text-muted-foreground">
+            Use <span className="font-mono">ALL</span> para começar. Após a 1ª sincronização, vá em{" "}
+            <span className="font-mono text-primary">Tabelas</span> → <span className="font-mono">Escopo de sincronização</span>{" "}
+            para escolher (marcar/desmarcar) exatamente quais tabelas a API deve replicar.
+          </p>
         </div>
         <div className="col-span-2 space-y-1.5">
           <Label>Endpoint do agente</Label>
