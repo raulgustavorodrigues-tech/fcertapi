@@ -41,7 +41,7 @@ from typing import Any, Dict, List, Optional
 # ---------------------------------------------------------------------------
 # Constantes
 # ---------------------------------------------------------------------------
-AGENT_VERSION = "1.3.1"
+AGENT_VERSION = "1.3.2"
 SERVICE_NAME = "FireSyncAgent"
 SERVICE_DISPLAY = "FireSync LocalBridge Agent"
 SERVICE_DESC = (
@@ -652,14 +652,44 @@ def cmd_network_test(_: Dict[str, Any]) -> Dict[str, Any]:
 def cmd_list_tables() -> Dict[str, Any]:
     con = _db_connect(); cur = con.cursor()
     cur.execute("SELECT TRIM(RDB$RELATION_NAME) FROM RDB$RELATIONS "
-                "WHERE RDB$SYSTEM_FLAG = 0 ORDER BY 1")
+                "WHERE RDB$SYSTEM_FLAG = 0 AND RDB$VIEW_BLR IS NULL ORDER BY 1")
     tables = [r[0] for r in cur.fetchall()]
     out = []
     for t in tables:
-        cur.execute(f'SELECT COUNT(*) FROM "{t}"')
-        out.append({"name": t, "row_count": int(cur.fetchone()[0])})
+        # colunas da tabela (nome, tipo, nullability)
+        cur.execute(
+            "SELECT TRIM(rf.RDB$FIELD_NAME), f.RDB$FIELD_TYPE, "
+            "COALESCE(rf.RDB$NULL_FLAG, 0) "
+            "FROM RDB$RELATION_FIELDS rf "
+            "JOIN RDB$FIELDS f ON f.RDB$FIELD_NAME = rf.RDB$FIELD_SOURCE "
+            "WHERE rf.RDB$RELATION_NAME = ? "
+            "ORDER BY rf.RDB$FIELD_POSITION", (t,))
+        cols = []
+        for cn, ftype, notnull in cur.fetchall():
+            cols.append({
+                "name": cn,
+                "type": _firebird_type_name(ftype),
+                "nullable": (int(notnull) == 0),
+            })
+        # contagem de linhas
+        try:
+            cur.execute(f'SELECT COUNT(*) FROM "{t}"')
+            rc = int(cur.fetchone()[0])
+        except Exception:
+            rc = 0
+        out.append({"name": t, "row_count": rc, "columns": cols,
+                    "column_count": len(cols)})
     con.close()
     return {"tables": out}
+
+
+def _firebird_type_name(code: int) -> str:
+    # Mapeia RDB$FIELD_TYPE do Firebird para nome legível
+    return {
+        7: "SMALLINT", 8: "INTEGER", 10: "FLOAT", 12: "DATE",
+        13: "TIME", 14: "CHAR", 16: "BIGINT", 27: "DOUBLE",
+        35: "TIMESTAMP", 37: "VARCHAR", 261: "BLOB",
+    }.get(int(code), f"TYPE_{code}")
 
 
 # --- correcoes-v1 (C2): run_query é SOMENTE LEITURA -------------------------
