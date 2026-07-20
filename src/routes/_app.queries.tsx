@@ -410,7 +410,7 @@ function RunnerDialog({ query, onClose, onRan }: any) {
       const { enqueueCommand, awaitCommandResult } = await import("@/lib/commands");
       const { command_id } = await enqueueCommand(query.database_id, "run_query", {
         sql: finalSQL,
-        max_rows: 100,
+        max_rows: 5000,
         query_name: query.name,
       });
       const row = await awaitCommandResult(command_id, { timeoutMs: 60_000, intervalMs: 1500 });
