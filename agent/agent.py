@@ -41,7 +41,7 @@ from typing import Any, Dict, List, Optional
 # ---------------------------------------------------------------------------
 # Constantes
 # ---------------------------------------------------------------------------
-AGENT_VERSION = "1.3.2"
+AGENT_VERSION = "1.4.0"
 SERVICE_NAME = "FireSyncAgent"
 SERVICE_DISPLAY = "FireSync LocalBridge Agent"
 SERVICE_DESC = (
@@ -191,7 +191,14 @@ def _post_json(url: str, payload: Dict[str, Any], timeout: int = 15):
     return requests.post(url, data=body.encode("utf-8"), headers=_headers(body), timeout=timeout)
 
 
+import threading
+
+_db_lock = threading.Lock()
+_db_shared = None  # conexão persistente reutilizada
+
+
 def _db_connect():
+    """Abre uma conexão NOVA e crua com o Firebird (uso pontual)."""
     if fdb is None:
         raise RuntimeError("Driver Firebird (fdb) não disponível neste build.")
     dsn = f"{CFG['db_host']}/{CFG['db_port']}:{CFG['db_path']}"
@@ -201,6 +208,37 @@ def _db_connect():
         password=CFG["db_pass"],
         charset=CFG["db_charset"],
     )
+
+
+def _db_alive(con) -> bool:
+    """Testa se a conexão persistente ainda responde."""
+    try:
+        cur = con.cursor()
+        cur.execute("SELECT 1 FROM RDB$DATABASE")
+        cur.fetchone()
+        return True
+    except Exception:
+        return False
+
+
+def _db_conn():
+    """Retorna a conexão persistente, reconectando se necessário.
+    Reaproveita o handshake do Firebird entre operações — muito mais rápido
+    que abrir/fechar a cada query. Thread-safe.
+    """
+    global _db_shared
+    with _db_lock:
+        if _db_shared is not None and _db_alive(_db_shared):
+            return _db_shared
+        try:
+            if _db_shared is not None:
+                try: _db_shared.close()
+                except Exception: pass
+        finally:
+            _db_shared = None
+        _db_shared = _db_connect()
+        log.info("conexão persistente com o Firebird (re)estabelecida")
+        return _db_shared
 
 
 # ---------------------------------------------------------------------------
