@@ -221,24 +221,26 @@ def _db_alive(con) -> bool:
         return False
 
 
-def _db_conn():
-    """Retorna a conexão persistente, reconectando se necessário.
-    Reaproveita o handshake do Firebird entre operações — muito mais rápido
-    que abrir/fechar a cada query. Thread-safe.
-    """
+def _db_conn_locked():
+    """Versão interna: assume que _db_lock já está adquirido pelo chamador."""
     global _db_shared
-    with _db_lock:
-        if _db_shared is not None and _db_alive(_db_shared):
-            return _db_shared
-        try:
-            if _db_shared is not None:
-                try: _db_shared.close()
-                except Exception: pass
-        finally:
-            _db_shared = None
-        _db_shared = _db_connect()
-        log.info("conexão persistente com o Firebird (re)estabelecida")
+    if _db_shared is not None and _db_alive(_db_shared):
         return _db_shared
+    try:
+        if _db_shared is not None:
+            try: _db_shared.close()
+            except Exception: pass
+    finally:
+        _db_shared = None
+    _db_shared = _db_connect()
+    log.info("conexão persistente com o Firebird (re)estabelecida")
+    return _db_shared
+
+
+def _db_conn():
+    """Retorna a conexão persistente, reconectando se necessário. Thread-safe."""
+    with _db_lock:
+        return _db_conn_locked()
 
 
 # ---------------------------------------------------------------------------
@@ -773,28 +775,31 @@ def cmd_run_query(payload: Dict[str, Any]) -> Dict[str, Any]:
         max_rows = 1000
     max_rows = max(1, min(max_rows, MAX_QUERY_ROWS_HARD))
 
-    con = _db_connect()
-    try:
-        cur = con.cursor()
-        cur.execute(sql)
-        cols = [d[0] for d in cur.description] if cur.description else []
-        rows = [[_json_safe_value(v) for v in r] for r in cur.fetchmany(max_rows + 1)]
-        truncated = len(rows) > max_rows
-        if truncated:
-            rows = rows[:max_rows]
-        return {
-            "columns": cols,
-            "rows": rows,
-            "row_count": len(rows),
-            "truncated": truncated,
-            "max_rows": max_rows,
-            "affected": 0,
-        }
-    finally:
-        try: con.rollback()   # garantia extra: nada é persistido
-        except Exception: pass
-        try: con.close()
-        except Exception: pass
+    with _db_lock:
+        con = _db_conn_locked()
+        try:
+            cur = con.cursor()
+            cur.execute(sql)
+            cols = [d[0] for d in cur.description] if cur.description else []
+            rows = [[_json_safe_value(v) for v in r] for r in cur.fetchmany(max_rows + 1)]
+            truncated = len(rows) > max_rows
+            if truncated:
+                rows = rows[:max_rows]
+            return {
+                "columns": cols,
+                "rows": rows,
+                "row_count": len(rows),
+                "truncated": truncated,
+                "max_rows": max_rows,
+                "affected": 0,
+            }
+        finally:
+            # rollback SEMPRE: nada é persistido e a transação é limpa
+            # para a próxima query reusar a mesma conexão sem lixo pendente
+            try: con.rollback()
+            except Exception: pass
+
+
 
 
 def _json_safe_value(value: Any) -> Any:
