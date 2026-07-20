@@ -685,37 +685,40 @@ def cmd_network_test(_: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def cmd_list_tables() -> Dict[str, Any]:
-    con = _db_connect(); cur = con.cursor()
-    cur.execute("SELECT TRIM(RDB$RELATION_NAME) FROM RDB$RELATIONS "
-                "WHERE RDB$SYSTEM_FLAG = 0 AND RDB$VIEW_BLR IS NULL ORDER BY 1")
-    tables = [r[0] for r in cur.fetchall()]
-    out = []
-    for t in tables:
-        # colunas da tabela (nome, tipo, nullability)
-        cur.execute(
-            "SELECT TRIM(rf.RDB$FIELD_NAME), f.RDB$FIELD_TYPE, "
-            "COALESCE(rf.RDB$NULL_FLAG, 0) "
-            "FROM RDB$RELATION_FIELDS rf "
-            "JOIN RDB$FIELDS f ON f.RDB$FIELD_NAME = rf.RDB$FIELD_SOURCE "
-            "WHERE rf.RDB$RELATION_NAME = ? "
-            "ORDER BY rf.RDB$FIELD_POSITION", (t,))
-        cols = []
-        for cn, ftype, notnull in cur.fetchall():
-            cols.append({
-                "name": cn,
-                "type": _firebird_type_name(ftype),
-                "nullable": (int(notnull) == 0),
-            })
-        # contagem de linhas
-        try:
-            cur.execute(f'SELECT COUNT(*) FROM "{t}"')
-            rc = int(cur.fetchone()[0])
-        except Exception:
-            rc = 0
-        out.append({"name": t, "row_count": rc, "columns": cols,
-                    "column_count": len(cols)})
-    con.close()
-    return {"tables": out}
+    con = _db_conn()
+    with _db_lock:
+        cur = con.cursor()
+        cur.execute("SELECT TRIM(RDB$RELATION_NAME) FROM RDB$RELATIONS "
+                    "WHERE RDB$SYSTEM_FLAG = 0 AND RDB$VIEW_BLR IS NULL ORDER BY 1")
+        tables = [r[0] for r in cur.fetchall()]
+        out = []
+        for t in tables:
+            # colunas da tabela (nome, tipo, nullability)
+            cur.execute(
+                "SELECT TRIM(rf.RDB$FIELD_NAME), f.RDB$FIELD_TYPE, "
+                "COALESCE(rf.RDB$NULL_FLAG, 0) "
+                "FROM RDB$RELATION_FIELDS rf "
+                "JOIN RDB$FIELDS f ON f.RDB$FIELD_NAME = rf.RDB$FIELD_SOURCE "
+                "WHERE rf.RDB$RELATION_NAME = ? "
+                "ORDER BY rf.RDB$FIELD_POSITION", (t,))
+            cols = []
+            for cn, ftype, notnull in cur.fetchall():
+                cols.append({
+                    "name": cn,
+                    "type": _firebird_type_name(ftype),
+                    "nullable": (int(notnull) == 0),
+                })
+            # contagem de linhas
+            try:
+                cur.execute(f'SELECT COUNT(*) FROM "{t}"')
+                rc = int(cur.fetchone()[0])
+            except Exception:
+                rc = 0
+            out.append({"name": t, "row_count": rc, "columns": cols,
+                        "column_count": len(cols)})
+        try: con.rollback()
+        except Exception: pass
+        return {"tables": out}
 
 
 def _firebird_type_name(code: int) -> str:
