@@ -858,12 +858,15 @@ def do_sync() -> None:
         if CFG["sync_tables"].upper() == "ALL":
             tables_info = cmd_list_tables()["tables"]
         else:
-            con = _db_connect(); cur = con.cursor()
-            tables_info = []
-            for t in [x.strip() for x in CFG["sync_tables"].split(",") if x.strip()]:
-                cur.execute(f'SELECT COUNT(*) FROM "{t}"')
-                tables_info.append({"name": t, "row_count": int(cur.fetchone()[0])})
-            con.close()
+            con = _db_conn()
+            with _db_lock:
+                cur = con.cursor()
+                tables_info = []
+                for t in [x.strip() for x in CFG["sync_tables"].split(",") if x.strip()]:
+                    cur.execute(f'SELECT COUNT(*) FROM "{t}"')
+                    tables_info.append({"name": t, "row_count": int(cur.fetchone()[0])})
+                try: con.rollback()
+                except Exception: pass
 
         payload = {
             "agent_uid":     CFG["agent_uid"],
