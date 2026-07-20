@@ -602,7 +602,7 @@ def cmd_ping_test() -> Dict[str, Any]:
 
     con = None
     try:
-        con = _db_connect()
+        con = _db_conn()
         out["auth_ok"] = True
         out["db_reachable"] = True
     except Exception as e:
@@ -628,13 +628,8 @@ def cmd_ping_test() -> Dict[str, Any]:
         out["query_error"] = str(e)
         out["ok"] = False
         out["error"] = str(e)
-        try: con.close()
-        except Exception: pass
         out["latency_ms"] = int((time.time() - t0) * 1000)
         return out
-    finally:
-        try: con.close()
-        except Exception: pass
 
     out["latency_ms"] = int((time.time() - t0) * 1000)
     out["ok"] = True
