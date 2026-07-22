@@ -121,25 +121,27 @@ set "INSTALLER_URL=${origin}/api/public/agent-download?token=${db.agent_token}"
 set "INSTALLER_EXE=%~dp0firesync-agent-setup.exe"
 set "ENVFILE=%~dp0firesync-agent.env"
 
-echo [1/3] Baixando instalador do FireSync Agent...
-echo       URL: %INSTALLER_URL%
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$ProgressPreference='SilentlyContinue'; try { Invoke-WebRequest -Uri '%INSTALLER_URL%' -OutFile '%INSTALLER_EXE%' -UseBasicParsing } catch { Write-Host $_.Exception.Message; exit 1 }"
-if errorlevel 1 goto :download_fail
-if not exist "%INSTALLER_EXE%" goto :download_fail
+if exist "%INSTALLER_EXE%" (
+    echo [1/3] Instalador ja incluido no ZIP - pulando download.
+    for %%A in ("%INSTALLER_EXE%") do echo       Arquivo local: %%~zA bytes
+) else (
+    echo [1/3] Baixando instalador do FireSync Agent...
+    echo       URL: %INSTALLER_URL%
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "$ProgressPreference='SilentlyContinue'; try { Invoke-WebRequest -Uri '%INSTALLER_URL%' -OutFile '%INSTALLER_EXE%' -UseBasicParsing } catch { Write-Host $_.Exception.Message; exit 1 }"
+    if errorlevel 1 goto :download_fail
+    if not exist "%INSTALLER_EXE%" goto :download_fail
+    for %%A in ("%INSTALLER_EXE%") do echo       OK: %%~zA bytes
+)
 
-echo       Validando o arquivo baixado...
+echo       Validando o executavel...
 powershell -NoProfile -Command "$b=[IO.File]::ReadAllBytes('%INSTALLER_EXE%')[0..1]; if($b[0] -ne 77 -or $b[1] -ne 90){ exit 1 }"
 if errorlevel 1 (
     echo.
-    echo ERRO: o arquivo baixado NAO e um executavel Windows valido.
-    echo Provavelmente a URL do instalador esta incorreta e retornou uma
-    echo pagina HTML ^(verifique AGENT_INSTALLER_URL no Hub^).
-    echo URL usada: %INSTALLER_URL%
+    echo ERRO: o arquivo NAO e um executavel Windows valido.
     del "%INSTALLER_EXE%" >nul 2>&1
     pause
     exit /b 5
 )
-for %%A in ("%INSTALLER_EXE%") do echo       OK: %%~zA bytes
 
 
 
