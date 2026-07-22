@@ -74,10 +74,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "CONECTA API — Hub de integração Firebird" },
+      { title: "CONECTA API — Integração de sistemas com o fórmula certa" },
       { name: "description", content: "Plataforma de recepção, modelagem e sincronização de dados Firebird via API REST." },
-      { property: "og:title", content: "CONECTA API — Hub de integração Firebird" },
-      { name: "twitter:title", content: "CONECTA API — Hub de integração Firebird" },
+      { property: "og:title", content: "CONECTA API — Integração de sistemas com o fórmula certa" },
+      { name: "twitter:title", content: "CONECTA API — Integração de sistemas com o fórmula certa" },
       { property: "og:description", content: "Plataforma de recepção, modelagem e sincronização de dados Firebird via API REST." },
       { name: "twitter:description", content: "Plataforma de recepção, modelagem e sincronização de dados Firebird via API REST." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ee2023e7-f850-4455-a0e4-12841bbd6a87/id-preview-71b9fdb2--0a352948-cfb1-4d38-8ac7-41a0d3e50420.lovable.app-1781114647913.png" },
