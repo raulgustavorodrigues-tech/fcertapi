@@ -15,7 +15,11 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, Database as DatabaseIcon, Eye, EyeOff, Zap, RefreshCw, Pencil, Trash2, Copy, Check, X, Loader2, Activity, Download, FileText } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
+import { Plus, Database as DatabaseIcon, Eye, EyeOff, Zap, RefreshCw, Pencil, Trash2, Copy, Check, X, Loader2, Activity, Download, FileText, MoreHorizontal, Stethoscope, FileCode } from "lucide-react";
 import { toast } from "sonner";
 import { formatDateTime, formatRelative } from "@/lib/format";
 
@@ -454,18 +458,26 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
       <div className="mb-4">
         <LatencyBar ms={latency} />
       </div>
+      <TooltipProvider delayDuration={200}>
       <div className="flex flex-wrap gap-2">
         <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
           <PopoverTrigger asChild>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={(e) => { e.preventDefault(); runTest(); }}
-              disabled={running}
-            >
-              {running ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Zap className="h-3.5 w-3.5 mr-1" />}
-              Testar
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={(e) => { e.preventDefault(); runTest(); }}
+                  disabled={running}
+                >
+                  {running ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Zap className="h-3.5 w-3.5 mr-1" />}
+                  Testar
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs">
+                Envia um <b>ping_test</b> ao agente já instalado e valida em tempo real a conexão com o Firebird. Use após o agente estar rodando.
+              </TooltipContent>
+            </Tooltip>
           </PopoverTrigger>
           <PopoverContent align="start" className="w-80 p-3">
             <div className="flex items-center justify-between mb-2">
@@ -495,31 +507,105 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
             )}
           </PopoverContent>
         </Popover>
-        <Button size="sm" variant="outline" onClick={onSync}>
-          <RefreshCw className="h-3.5 w-3.5 mr-1" /> Sync
-        </Button>
-        <Button size="sm" variant="outline" onClick={copyConfig} title="Copiar .env do agente LocalBridge">
-          <Copy className="h-3.5 w-3.5 mr-1" /> Copiar .env
-        </Button>
-        <Button size="sm" onClick={downloadInstaller} title="Instalador Windows (.exe) — serviço nativo, sem Python, auto-start com o Windows">
-          <Download className="h-3.5 w-3.5 mr-1" /> Instalador Windows
-        </Button>
-        <Button size="sm" variant="outline" onClick={downloadAgent} title="Pacote Python (avançado)">
-          <Download className="h-3.5 w-3.5 mr-1" /> Agente Python
-        </Button>
-        <Button size="sm" variant="outline" onClick={downloadProbe} title="Baixar probe de diagnóstico (somente leitura) para levantar requisitos pendentes">
-          <Download className="h-3.5 w-3.5 mr-1" /> Probe
-        </Button>
-        <Button size="sm" variant="outline" onClick={downloadInstallPdf} title="PDF com passo a passo da instalação deste banco">
-          <FileText className="h-3.5 w-3.5 mr-1" /> Manual PDF
-        </Button>
-        <Button size="sm" variant="outline" onClick={onEdit}>
-          <Pencil className="h-3.5 w-3.5" />
-        </Button>
-        <Button size="sm" variant="outline" onClick={onDelete}>
-          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-        </Button>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button size="sm" variant="outline" onClick={onSync}>
+              <RefreshCw className="h-3.5 w-3.5 mr-1" /> Sync
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-xs">
+            Dispara <b>force_sync</b> imediato no agente. Ele lê as tabelas configuradas e envia para o Hub sem esperar o intervalo agendado.
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button size="sm" onClick={downloadInstaller}>
+              <Download className="h-3.5 w-3.5 mr-1" /> Instalador Windows
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-xs">
+            Baixa o ZIP com <b>install.bat</b> + <b>firesync-agent-setup.exe</b> pré-configurado para este banco. Instala como serviço nativo do Windows, auto-start. <b>Caminho oficial de produção.</b>
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button size="sm" variant="outline" onClick={onEdit}>
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Editar cadastro (host, credenciais, tabelas, intervalo)</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button size="sm" variant="outline" onClick={onDelete}>
+              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-xs">
+            Remove este banco e todo o histórico associado (heartbeats, comandos, eventos, cache de schema). Ação irreversível.
+          </TooltipContent>
+        </Tooltip>
+
+        <DropdownMenu>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline">
+                  <MoreHorizontal className="h-3.5 w-3.5 mr-1" /> Avançado
+                </Button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="top">Ferramentas avançadas de instalação e diagnóstico</TooltipContent>
+          </Tooltip>
+          <DropdownMenuContent align="end" className="w-72">
+            <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Pré-instalação
+            </DropdownMenuLabel>
+            <DropdownMenuItem onClick={downloadProbe} className="flex-col items-start gap-0.5 py-2">
+              <div className="flex items-center gap-2 font-medium">
+                <Stethoscope className="h-3.5 w-3.5" /> Diagnóstico pré-instalação
+              </div>
+              <div className="text-[11px] text-muted-foreground pl-5">
+                Script somente-leitura para rodar no PC do cliente <b>antes</b> de instalar o agente. Levanta driver Firebird, versão, portas e permissões.
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={downloadInstallPdf} className="flex-col items-start gap-0.5 py-2">
+              <div className="flex items-center gap-2 font-medium">
+                <FileText className="h-3.5 w-3.5" /> Manual de instalação (PDF)
+              </div>
+              <div className="text-[11px] text-muted-foreground pl-5">
+                Passo-a-passo impresso específico deste banco, com token e endpoints. Para o técnico levar em campo.
+              </div>
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Alternativas / manutenção
+            </DropdownMenuLabel>
+            <DropdownMenuItem onClick={copyConfig} className="flex-col items-start gap-0.5 py-2">
+              <div className="flex items-center gap-2 font-medium">
+                <Copy className="h-3.5 w-3.5" /> Copiar .env
+              </div>
+              <div className="text-[11px] text-muted-foreground pl-5">
+                Copia o conteúdo do <b>firesync-agent.env</b> para reconfigurar uma instalação já existente sem baixar o instalador de novo.
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={downloadAgent} className="flex-col items-start gap-0.5 py-2">
+              <div className="flex items-center gap-2 font-medium">
+                <FileCode className="h-3.5 w-3.5" /> Agente Python (avançado)
+              </div>
+              <div className="text-[11px] text-muted-foreground pl-5">
+                Pacote fonte Python. Uso em Linux, debug ou ambientes onde o serviço Windows não se aplica.
+              </div>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
+      </TooltipProvider>
     </Card>
   );
 }
