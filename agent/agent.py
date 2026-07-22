@@ -41,7 +41,7 @@ from typing import Any, Dict, List, Optional
 # ---------------------------------------------------------------------------
 # Constantes
 # ---------------------------------------------------------------------------
-AGENT_VERSION = "1.5.0"
+AGENT_VERSION = "1.5.1"
 SERVICE_NAME = "FireSyncAgent"
 SERVICE_DISPLAY = "FireSync LocalBridge Agent"
 SERVICE_DESC = (
@@ -908,14 +908,15 @@ def do_sync_entregas() -> None:
             "T1.FLAGENTG, T1.OBSENTG "
             "FROM FC12400 T1 "
             "LEFT JOIN FC07000 T2 ON T1.CDCLIDES = T2.CDCLI "
-            "WHERE T1.DTENTG >= ?"
+            "WHERE T1.DTENTG >= ? AND T1.DTENTG <= ?"
         )
         cutoff = (datetime.now() - timedelta(days=SYNC_ENTREGAS_WINDOW_DAYS)).strftime("%Y-%m-%d")
+        ceiling = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
 
         with _db_lock:
             con = _db_conn_locked()
             cur = con.cursor()
-            cur.execute(sql, (cutoff,))
+            cur.execute(sql, (cutoff, ceiling))
             cols = [d[0].lower() for d in cur.description]
             rows = []
             for rec in cur.fetchall():
