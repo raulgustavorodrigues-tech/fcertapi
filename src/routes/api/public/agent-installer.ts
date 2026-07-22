@@ -225,11 +225,32 @@ Desinstalar:
     Painel de Controle > Programas > "FireSync LocalBridge Agent"
 `;
 
-        const files = {
+        // Busca o instalador do GitHub pelo lado do servidor (Cloudflare
+        // alcança o GitHub sem o problema de TLS do servidor local) e embute
+        // no ZIP, para o operador não precisar baixar nada na máquina.
+        let exeBytes: Uint8Array | null = null;
+        try {
+          const exeResp = await fetch(installerUrl, { redirect: "follow" });
+          if (exeResp.ok) {
+            const buf = await exeResp.arrayBuffer();
+            const arr = new Uint8Array(buf);
+            // valida assinatura MZ (executável Windows) antes de embutir
+            if (arr.length > 1000 && arr[0] === 0x4d && arr[1] === 0x5a) {
+              exeBytes = arr;
+            }
+          }
+        } catch {
+          exeBytes = null; // se falhar, o ZIP sai sem o exe e o .bat baixa como fallback
+        }
+
+        const files: Record<string, Uint8Array> = {
           [`${folder}/install.bat`]:            strToU8(installBat),
           [`${folder}/firesync-agent.env`]:     strToU8(envFile),
           [`${folder}/LEIA-ME.txt`]:            strToU8(readme),
         };
+        if (exeBytes) {
+          files[`${folder}/firesync-agent-setup.exe`] = exeBytes;
+        }
 
         const zipped = zipSync(files, { level: 6 });
         const ab = zipped.buffer.slice(
