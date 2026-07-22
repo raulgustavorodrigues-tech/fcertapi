@@ -15,7 +15,11 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, Database as DatabaseIcon, Eye, EyeOff, Zap, RefreshCw, Pencil, Trash2, Copy, Check, X, Loader2, Activity, Download, FileText } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
+import { Plus, Database as DatabaseIcon, Eye, EyeOff, Zap, RefreshCw, Pencil, Trash2, Copy, Check, X, Loader2, Activity, Download, FileText, MoreHorizontal, Stethoscope, FileCode } from "lucide-react";
 import { toast } from "sonner";
 import { formatDateTime, formatRelative } from "@/lib/format";
 
