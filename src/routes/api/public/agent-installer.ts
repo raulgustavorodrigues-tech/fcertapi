@@ -86,6 +86,7 @@ DB_FIREBIRD_VERSION=${db.firebird_version ?? "2.5"}
 SYNC_INTERVAL=${db.sync_interval ?? 900}
 HEARTBEAT_INTERVAL=30
 SYNC_TABLES=${db.sync_tables ?? "ALL"}
+SYNC_ENTREGAS_WINDOW_DAYS=30
 LOG_LEVEL=INFO
 `;
 
