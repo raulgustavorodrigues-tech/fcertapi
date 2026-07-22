@@ -327,6 +327,115 @@ export type Database = {
           },
         ]
       }
+      entregas_sync: {
+        Row: {
+          bairr: string | null
+          cdclides: number | null
+          cdfilentg: number
+          cdfilentgdes: number | null
+          cdreg: number | null
+          database_id: string
+          dtentg: string | null
+          endcp: string | null
+          endnr: string | null
+          endrf: string | null
+          flagentg: string | null
+          munic: string | null
+          nomecli: string | null
+          nrcep: string | null
+          nrentg: number
+          nrtel: string | null
+          obsentg: string | null
+          periodo: number | null
+          qtform: number | null
+          synced_at: string
+          unfed: string | null
+        }
+        Insert: {
+          bairr?: string | null
+          cdclides?: number | null
+          cdfilentg: number
+          cdfilentgdes?: number | null
+          cdreg?: number | null
+          database_id: string
+          dtentg?: string | null
+          endcp?: string | null
+          endnr?: string | null
+          endrf?: string | null
+          flagentg?: string | null
+          munic?: string | null
+          nomecli?: string | null
+          nrcep?: string | null
+          nrentg: number
+          nrtel?: string | null
+          obsentg?: string | null
+          periodo?: number | null
+          qtform?: number | null
+          synced_at?: string
+          unfed?: string | null
+        }
+        Update: {
+          bairr?: string | null
+          cdclides?: number | null
+          cdfilentg?: number
+          cdfilentgdes?: number | null
+          cdreg?: number | null
+          database_id?: string
+          dtentg?: string | null
+          endcp?: string | null
+          endnr?: string | null
+          endrf?: string | null
+          flagentg?: string | null
+          munic?: string | null
+          nomecli?: string | null
+          nrcep?: string | null
+          nrentg?: number
+          nrtel?: string | null
+          obsentg?: string | null
+          periodo?: number | null
+          qtform?: number | null
+          synced_at?: string
+          unfed?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entregas_sync_database_id_fkey"
+            columns: ["database_id"]
+            isOneToOne: false
+            referencedRelation: "databases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      entregas_sync_status: {
+        Row: {
+          database_id: string
+          last_sync_at: string | null
+          rows_synced: number | null
+          window_days: number | null
+        }
+        Insert: {
+          database_id: string
+          last_sync_at?: string | null
+          rows_synced?: number | null
+          window_days?: number | null
+        }
+        Update: {
+          database_id?: string
+          last_sync_at?: string | null
+          rows_synced?: number | null
+          window_days?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entregas_sync_status_database_id_fkey"
+            columns: ["database_id"]
+            isOneToOne: true
+            referencedRelation: "databases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       saved_queries: {
         Row: {
           created_at: string
