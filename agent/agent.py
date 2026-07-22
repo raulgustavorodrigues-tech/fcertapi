@@ -41,7 +41,7 @@ from typing import Any, Dict, List, Optional
 # ---------------------------------------------------------------------------
 # Constantes
 # ---------------------------------------------------------------------------
-AGENT_VERSION = "1.4.0"
+AGENT_VERSION = "1.5.0"
 SERVICE_NAME = "FireSyncAgent"
 SERVICE_DISPLAY = "FireSync LocalBridge Agent"
 SERVICE_DESC = (
@@ -886,6 +886,71 @@ def do_sync() -> None:
         log.error("sync falhou: %s", e)
 
 
+SYNC_ENTREGAS_WINDOW_DAYS = int(os.getenv("SYNC_ENTREGAS_WINDOW_DAYS", "30"))
+SYNC_ENTREGAS_URL = os.getenv("SYNC_ENTREGAS_URL", "").strip()
+
+
+def _entregas_endpoint() -> str:
+    if SYNC_ENTREGAS_URL:
+        return SYNC_ENTREGAS_URL
+    base = CFG["remote"].rsplit("/api/public/", 1)[0]
+    return f"{base}/api/public/sync-entregas"
+
+
+def do_sync_entregas() -> None:
+    """Replica as entregas recentes (FC12400 + nome do cliente) para o Hub.
+    Janela móvel de N dias com upsert — auto-corrige e evita duplicatas."""
+    try:
+        sql = (
+            "SELECT T1.CDFILENTG, T1.NRENTG, T1.DTENTG, T1.CDREG, T1.PERIODO, "
+            "T1.CDCLIDES, T2.NOMECLI, T1.NRTEL, T1.NRCEP, T1.ENDRF, T1.ENDNR, "
+            "T1.ENDCP, T1.BAIRR, T1.MUNIC, T1.UNFED, T1.CDFILENTGDES, T1.QTFORM, "
+            "T1.FLAGENTG, T1.OBSENTG "
+            "FROM FC12400 T1 "
+            "LEFT JOIN FC07000 T2 ON T1.CDCLIDES = T2.CDCLI "
+            "WHERE T1.DTENTG >= ?"
+        )
+        cutoff = (datetime.now() - timedelta(days=SYNC_ENTREGAS_WINDOW_DAYS)).strftime("%Y-%m-%d")
+
+        with _db_lock:
+            con = _db_conn_locked()
+            cur = con.cursor()
+            cur.execute(sql, (cutoff,))
+            cols = [d[0].lower() for d in cur.description]
+            rows = []
+            for rec in cur.fetchall():
+                d = dict(zip(cols, rec))
+                if d.get("dtentg") is not None:
+                    d["dtentg"] = str(d["dtentg"])[:10]
+                for k, v in list(d.items()):
+                    if isinstance(v, str):
+                        d[k] = v.strip() or None
+                rows.append(d)
+            try: con.rollback()
+            except Exception: pass
+
+        total = 0
+        for i in range(0, len(rows), 5000):
+            chunk = rows[i:i + 5000]
+            payload = {
+                "agent_uid": CFG["agent_uid"],
+                "window_days": SYNC_ENTREGAS_WINDOW_DAYS,
+                "rows": chunk,
+            }
+            r = _post_json(_entregas_endpoint(), payload, timeout=120)
+            if r.status_code == 200:
+                total += len(chunk)
+            else:
+                log.error("sync-entregas lote falhou: %s %s", r.status_code, r.text[:200])
+                break
+        log.info("sync-entregas: %d entregas enviadas (janela %dd)", total, SYNC_ENTREGAS_WINDOW_DAYS)
+    except Exception as e:
+        log.error("sync-entregas falhou: %s", e)
+
+
+
+
+
 # ---------------------------------------------------------------------------
 # Loop principal (foreground) — usado por --run e --service
 # ---------------------------------------------------------------------------
@@ -918,7 +983,9 @@ def run_loop(stop_check=lambda: _STOP) -> None:
                 try: heartbeat()
                 except Exception: pass
             if time.time() - last_sync >= CFG["sync_interval"]:
-                do_sync(); last_sync = time.time()
+                do_sync()
+                do_sync_entregas()
+                last_sync = time.time()
             fails = 0
         except Exception as e:
             fails += 1
