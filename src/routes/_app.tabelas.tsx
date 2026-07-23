@@ -34,7 +34,8 @@ function serializeSyncTables(mode: "ALL" | "SELECTED", set: Set<string>): string
 }
 
 function getTableRowCount(table: any): number {
-  return Number(table?.row_count ?? table?.rows ?? 0);
+  const n = Number(table?.row_count ?? table?.rows ?? 0);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
 export const Route = createFileRoute("/_app/tabelas")({ component: Page });
