@@ -712,15 +712,22 @@ def cmd_network_test(_: Dict[str, Any]) -> Dict[str, Any]:
     return {"steps": steps, "ok": all(s["ok"] for s in steps)}
 
 
-def cmd_list_tables() -> Dict[str, Any]:
+def cmd_list_tables(command_id: Optional[str] = None) -> Dict[str, Any]:
     con = _db_conn()
     with _db_lock:
         cur = con.cursor()
         cur.execute("SELECT TRIM(RDB$RELATION_NAME) FROM RDB$RELATIONS "
                     "WHERE RDB$SYSTEM_FLAG = 0 AND RDB$VIEW_BLR IS NULL ORDER BY 1")
         tables = [r[0] for r in cur.fetchall()]
+        total = len(tables)
+        started_at = datetime.now(timezone.utc).isoformat()
+        # Sinaliza início do scan (0 / total) para a UI já mostrar o denominador
+        if command_id:
+            post_progress(command_id, 0, total,
+                          label="scan_start", started_at=started_at)
         out = []
-        for t in tables:
+        last_emit = time.time()
+        for idx, t in enumerate(tables, start=1):
             # colunas da tabela (nome, tipo, nullability)
             cur.execute(
                 "SELECT TRIM(rf.RDB$FIELD_NAME), f.RDB$FIELD_TYPE, "
@@ -744,9 +751,16 @@ def cmd_list_tables() -> Dict[str, Any]:
                 rc = 0
             out.append({"name": t, "row_count": rc, "columns": cols,
                         "column_count": len(cols)})
+            # Emite progresso a cada ~1.5s ou nas últimas tabelas
+            now = time.time()
+            if command_id and (now - last_emit >= 1.5 or idx == total):
+                post_progress(command_id, idx, total,
+                              label=t, started_at=started_at)
+                last_emit = now
         try: con.rollback()
         except Exception: pass
-        return {"tables": out}
+        return {"tables": out, "total": total}
+
 
 
 def _firebird_type_name(code: int) -> str:
