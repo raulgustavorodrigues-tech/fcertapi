@@ -154,9 +154,17 @@ function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <FailuresBarCard errors={data?.errors24h ?? []} loading={isLoading} />
-        <AgentHealthSection agents={data?.allAgents ?? []} loading={isLoading} />
+        <BrazilAgentsMap agents={data?.allAgents ?? []} loading={isLoading} />
+        <div className="lg:col-span-1 space-y-4">
+          <AgentHealthSection agents={data?.allAgents ?? []} loading={isLoading} />
+        </div>
       </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <FailuresBarCard errors={data?.errors24h ?? []} loading={isLoading} />
+        <AgentDonutCard agents={data?.allAgents ?? []} loading={isLoading} />
+      </div>
+
 
       <AlertsPanel
         loading={isLoading}
