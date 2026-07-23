@@ -41,7 +41,7 @@ from typing import Any, Dict, List, Optional
 # ---------------------------------------------------------------------------
 # Constantes
 # ---------------------------------------------------------------------------
-AGENT_VERSION = "1.5.1"
+AGENT_VERSION = "1.5.2"
 SERVICE_NAME = "FireSyncAgent"
 SERVICE_DISPLAY = "FireSync LocalBridge Agent"
 SERVICE_DESC = (
@@ -118,8 +118,11 @@ CFG = {
 # Deriva endpoints v1.2 a partir do heartbeat, quando não configurados
 if CFG["heartbeat"]:
     _base = CFG["heartbeat"].rsplit("/", 1)[0]
-    CFG["report_url"]  = CFG["report_url"]  or f"{_base}/agent-report"
-    CFG["version_url"] = CFG["version_url"] or f"{_base}/agent-version"
+    CFG["report_url"]   = CFG["report_url"]   or f"{_base}/agent-report"
+    CFG["version_url"]  = CFG["version_url"]  or f"{_base}/agent-version"
+    CFG["progress_url"] = os.getenv("PROGRESS_ENDPOINT") or f"{_base}/command_progress"
+else:
+    CFG["progress_url"] = os.getenv("PROGRESS_ENDPOINT")
 
 
 # ---------------------------------------------------------------------------
@@ -577,6 +580,31 @@ def post_result(command_id: str, command_type: str, status: str,
         queue_put("result", payload)
 
 
+def post_progress(command_id: str, done: int, total: int,
+                  label: Optional[str] = None, started_at: Optional[str] = None) -> None:
+    """Best-effort: publica progresso intermediário. Falhas são silenciosas —
+    o comando ainda finaliza via post_result no fim."""
+    url = CFG.get("progress_url")
+    if not url or not command_id:
+        return
+    payload = {
+        "agent_uid": CFG["agent_uid"],
+        "command_id": command_id,
+        "progress": {
+            "done": int(done),
+            "total": int(total),
+            **({"label": label} if label else {}),
+            **({"started_at": started_at} if started_at else {}),
+        },
+    }
+    try:
+        _post_json(url, payload, timeout=8)
+    except Exception as e:
+        log.debug("post_progress ignorado: %s", e)
+
+
+
+
 # ---------------------------------------------------------------------------
 # Comandos executáveis (mesmos handlers da versão anterior)
 # ---------------------------------------------------------------------------
@@ -684,15 +712,22 @@ def cmd_network_test(_: Dict[str, Any]) -> Dict[str, Any]:
     return {"steps": steps, "ok": all(s["ok"] for s in steps)}
 
 
-def cmd_list_tables() -> Dict[str, Any]:
+def cmd_list_tables(command_id: Optional[str] = None) -> Dict[str, Any]:
     con = _db_conn()
     with _db_lock:
         cur = con.cursor()
         cur.execute("SELECT TRIM(RDB$RELATION_NAME) FROM RDB$RELATIONS "
                     "WHERE RDB$SYSTEM_FLAG = 0 AND RDB$VIEW_BLR IS NULL ORDER BY 1")
         tables = [r[0] for r in cur.fetchall()]
+        total = len(tables)
+        started_at = datetime.now(timezone.utc).isoformat()
+        # Sinaliza início do scan (0 / total) para a UI já mostrar o denominador
+        if command_id:
+            post_progress(command_id, 0, total,
+                          label="scan_start", started_at=started_at)
         out = []
-        for t in tables:
+        last_emit = time.time()
+        for idx, t in enumerate(tables, start=1):
             # colunas da tabela (nome, tipo, nullability)
             cur.execute(
                 "SELECT TRIM(rf.RDB$FIELD_NAME), f.RDB$FIELD_TYPE, "
@@ -716,9 +751,16 @@ def cmd_list_tables() -> Dict[str, Any]:
                 rc = 0
             out.append({"name": t, "row_count": rc, "columns": cols,
                         "column_count": len(cols)})
+            # Emite progresso a cada ~1.5s ou nas últimas tabelas
+            now = time.time()
+            if command_id and (now - last_emit >= 1.5 or idx == total):
+                post_progress(command_id, idx, total,
+                              label=t, started_at=started_at)
+                last_emit = now
         try: con.rollback()
         except Exception: pass
-        return {"tables": out}
+        return {"tables": out, "total": total}
+
 
 
 def _firebird_type_name(code: int) -> str:
@@ -839,7 +881,7 @@ def handle_command(cmd: Dict[str, Any]) -> None:
     t0 = time.time()
     try:
         if   ctype == "ping_test":    res = cmd_ping_test()
-        elif ctype == "list_tables":  res = cmd_list_tables()
+        elif ctype == "list_tables":  res = cmd_list_tables(cid)
         elif ctype == "run_query":    res = cmd_run_query(payload)
         elif ctype == "network_test": res = cmd_network_test(payload)
         elif ctype == "force_sync":

@@ -50,6 +50,7 @@ function Page() {
   const [loading, setLoading] = useState(false);
   const [waitElapsed, setWaitElapsed] = useState(0);
   const [loadStage, setLoadStage] = useState<"enqueue" | "delivered" | "scanning" | "finalizing">("enqueue");
+  const [progress, setProgress] = useState<{ done: number; total: number; label?: string } | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorMode, setEditorMode] = useState<"create" | "alter">("create");
 
@@ -181,11 +182,11 @@ function Page() {
     setLoading(true);
     setWaitElapsed(0);
     setLoadStage("enqueue");
+    setProgress(null);
     const startTs = Date.now();
     const tick = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startTs) / 1000);
       setWaitElapsed(elapsed);
-      // Heurística de estágio quando o agente ainda não atualizou o status
       setLoadStage((prev) => {
         if (prev === "finalizing") return prev;
         if (elapsed >= 8 && prev === "delivered") return "scanning";
@@ -195,12 +196,17 @@ function Page() {
     try {
       const { command_id } = await enqueueCommand(databaseId, "list_tables", {});
       const row = await awaitCommandResult(command_id, {
-        timeoutMs: 120_000,
+        timeoutMs: 180_000,
         intervalMs: 1500,
         onUpdate: (r) => {
           if (r?.status === "processing") setLoadStage("scanning");
           else if (r?.status === "pending") {
             setLoadStage((prev) => (prev === "enqueue" ? "delivered" : prev));
+          }
+          const p = r?.result?.progress;
+          if (p && typeof p.done === "number" && typeof p.total === "number") {
+            setProgress({ done: p.done, total: p.total, label: p.label });
+            if (p.done > 0) setLoadStage("scanning");
           }
         },
       });
@@ -208,6 +214,7 @@ function Page() {
       clearInterval(tick);
       if (row.status === "success" && row.result?.tables) {
         const tablesData = row.result.tables;
+        setProgress({ done: tablesData.length, total: tablesData.length });
         await supabase
           .from("schema_cache")
           .upsert(
@@ -225,6 +232,30 @@ function Page() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // Percentual + ETA: usa progresso real do agente quando disponível; senão,
+  // estima com base no tamanho do cache anterior (nº de tabelas conhecidas).
+  const cachedTotal = Array.isArray(cacheRow?.tables) ? (cacheRow!.tables as any[]).length : 0;
+  const effectiveTotal = progress?.total || cachedTotal || 0;
+  const effectiveDone = progress?.done ?? 0;
+  const hasRealProgress = !!progress && progress.total > 0;
+  let percent = 0;
+  if (hasRealProgress) {
+    percent = Math.min(99, Math.round((effectiveDone / effectiveTotal) * 100));
+    if (loadStage === "finalizing") percent = 100;
+  } else {
+    // Heurística: cresce até 90% em ~60s enquanto não há progresso real
+    percent = Math.min(90, Math.round((waitElapsed / 60) * 90));
+    if (loadStage === "finalizing") percent = 100;
+  }
+  let etaLabel = "";
+  if (hasRealProgress && effectiveDone > 0 && effectiveDone < effectiveTotal && waitElapsed > 0) {
+    const perTable = waitElapsed / effectiveDone;
+    const remaining = Math.max(1, Math.round(perTable * (effectiveTotal - effectiveDone)));
+    etaLabel = remaining >= 60
+      ? `~${Math.round(remaining / 60)}min restantes`
+      : `~${remaining}s restantes`;
   }
 
   const STAGES: Array<{ key: typeof loadStage; label: string; hint: string }> = [
@@ -293,7 +324,7 @@ function Page() {
                 </span>
                 <span className="text-muted-foreground">— {STAGES[stageIndex]?.hint}</span>
               </div>
-              <span className="text-[10px] text-muted-foreground">{waitElapsed}s / máx. 120s</span>
+              <span className="text-[10px] text-muted-foreground">{waitElapsed}s / máx. 180s</span>
             </div>
             <ol className="grid grid-cols-4 gap-2">
               {STAGES.map((s, i) => {
@@ -327,11 +358,25 @@ function Page() {
                 );
               })}
             </ol>
-            <div className="h-1 rounded bg-border overflow-hidden">
-              <div
-                className="h-full bg-primary transition-all duration-500"
-                style={{ width: `${((stageIndex + 1) / STAGES.length) * 100}%` }}
-              />
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-[10px] font-mono">
+                <span className="text-muted-foreground">
+                  {hasRealProgress
+                    ? <>Tabelas varridas: <span className="text-primary font-semibold">{effectiveDone}</span> / {effectiveTotal}{progress?.label && progress.label !== "scan_start" ? <> · <span className="truncate">{progress.label}</span></> : null}</>
+                    : effectiveTotal > 0
+                      ? <>Estimativa baseada no schema anterior ({effectiveTotal} tabelas)</>
+                      : <>Aguardando total de tabelas do agente…</>}
+                </span>
+                <span className="text-primary font-semibold">
+                  {percent}%{etaLabel ? <span className="text-muted-foreground font-normal"> · {etaLabel}</span> : null}
+                </span>
+              </div>
+              <div className="h-2 rounded bg-border overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-500 ${hasRealProgress ? "bg-primary" : "bg-primary/60"}`}
+                  style={{ width: `${percent}%` }}
+                />
+              </div>
             </div>
           </div>
         )}
