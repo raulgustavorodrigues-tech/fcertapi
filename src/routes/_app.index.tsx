@@ -95,7 +95,7 @@ function DashboardPage() {
         supabase.from("agents").select("*").order("last_heartbeat_at", { ascending: false }).limit(8),
         supabase.from("sync_logs").select("started_at").gte("started_at", since90d),
         supabase.from("sync_logs").select("started_at").gte("started_at", since7h),
-        supabase.from("agents").select("id, alias, agent_uid, status, last_heartbeat_at, system_info, pending_commands"),
+        supabase.from("agents").select("id, alias, agent_uid, status, last_heartbeat_at, system_info, pending_commands, database_id, databases(name, companies(name, state))"),
         supabase.from("databases").select("id, name, agent_token, companies(name)"),
         supabase.from("sync_logs")
           .select("id, status, error_message, started_at, databases(name, companies(name))")
