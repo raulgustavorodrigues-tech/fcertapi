@@ -42,6 +42,22 @@ export const Route = createFileRoute("/_app/tabelas")({ component: Page });
 // MOCK_SCHEMA removido — o schema agora vem exclusivamente de schema_cache
 // (populado pelo comando list_tables enviado ao agente).
 
+const JOB_STORAGE_KEY = "conecta.schemaReload.jobs";
+
+function loadJobsMap(): Record<string, string> {
+  try {
+    const raw = typeof window !== "undefined" ? window.localStorage.getItem(JOB_STORAGE_KEY) : null;
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+function saveJob(databaseId: string, commandId: string | null) {
+  if (typeof window === "undefined") return;
+  const map = loadJobsMap();
+  if (commandId) map[databaseId] = commandId;
+  else delete map[databaseId];
+  window.localStorage.setItem(JOB_STORAGE_KEY, JSON.stringify(map));
+}
+
 function Page() {
   const qc = useQueryClient();
   const [databaseId, setDatabaseId] = useState<string>("");
@@ -51,6 +67,8 @@ function Page() {
   const [waitElapsed, setWaitElapsed] = useState(0);
   const [loadStage, setLoadStage] = useState<"enqueue" | "delivered" | "scanning" | "finalizing">("enqueue");
   const [progress, setProgress] = useState<{ done: number; total: number; label?: string } | null>(null);
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const [includeCounts, setIncludeCounts] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorMode, setEditorMode] = useState<"create" | "alter">("create");
 
