@@ -22,6 +22,7 @@ import {
 import { Plus, Search, Building2, Database as DatabaseIcon, Pencil, Power } from "lucide-react";
 import { toast } from "sonner";
 import { formatCNPJ, formatDateTime } from "@/lib/format";
+import { BR_STATES as BR_UFS } from "@/components/conecta/br-map-data";
 
 export const Route = createFileRoute("/_app/empresas")({
   component: EmpresasPage,
