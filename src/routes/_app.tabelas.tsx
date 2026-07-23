@@ -284,9 +284,55 @@ function Page() {
           )}
         </div>
         {loading && (
-          <div className="mt-3 p-3 rounded border border-dashed border-primary/30 bg-primary/5 flex items-center gap-3 text-xs font-mono">
-            <Clock className="h-4 w-4 text-primary animate-pulse" />
-            <span>Solicitando schema ao agente… ({waitElapsed}s / máx. 120s)</span>
+          <div className="mt-3 p-3 rounded border border-dashed border-primary/30 bg-primary/5 space-y-3">
+            <div className="flex items-center justify-between gap-3 text-xs font-mono">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-primary animate-pulse" />
+                <span className="font-semibold">
+                  {STAGES[stageIndex]?.label ?? "Solicitando schema ao agente"}
+                </span>
+                <span className="text-muted-foreground">— {STAGES[stageIndex]?.hint}</span>
+              </div>
+              <span className="text-[10px] text-muted-foreground">{waitElapsed}s / máx. 120s</span>
+            </div>
+            <ol className="grid grid-cols-4 gap-2">
+              {STAGES.map((s, i) => {
+                const done = i < stageIndex;
+                const active = i === stageIndex;
+                return (
+                  <li
+                    key={s.key}
+                    className={`flex items-center gap-2 rounded px-2 py-1.5 border text-[10px] font-mono transition-colors ${
+                      done
+                        ? "border-success/40 bg-success/10 text-success"
+                        : active
+                          ? "border-primary/50 bg-primary/10 text-primary"
+                          : "border-border bg-background/40 text-muted-foreground"
+                    }`}
+                  >
+                    <span
+                      className={`flex h-4 w-4 items-center justify-center rounded-full border text-[9px] ${
+                        done
+                          ? "border-success bg-success text-background"
+                          : active
+                            ? "border-primary text-primary"
+                            : "border-muted-foreground/40"
+                      }`}
+                    >
+                      {done ? "✓" : i + 1}
+                    </span>
+                    <span className="truncate">{s.label}</span>
+                    {active && <Loader2 className="h-3 w-3 ml-auto animate-spin" />}
+                  </li>
+                );
+              })}
+            </ol>
+            <div className="h-1 rounded bg-border overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all duration-500"
+                style={{ width: `${((stageIndex + 1) / STAGES.length) * 100}%` }}
+              />
+            </div>
           </div>
         )}
       </Card>
