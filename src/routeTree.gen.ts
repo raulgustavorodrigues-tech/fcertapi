@@ -21,6 +21,7 @@ import { Route as AppConectividadeRouteImport } from './routes/_app.conectividad
 import { Route as AppBancosRouteImport } from './routes/_app.bancos'
 import { Route as AppAgenteRouteImport } from './routes/_app.agente'
 import { Route as AppAcessosRouteImport } from './routes/_app.acessos'
+import { Route as ApiV1EntregasRouteImport } from './routes/api/v1/entregas'
 import { Route as ApiPublicSyncEntregasRouteImport } from './routes/api/public/sync-entregas'
 import { Route as ApiPublicSyncRouteImport } from './routes/api/public/sync'
 import { Route as ApiPublicRegisterRouteImport } from './routes/api/public/register'
@@ -93,6 +94,11 @@ const AppAcessosRoute = AppAcessosRouteImport.update({
   id: '/acessos',
   path: '/acessos',
   getParentRoute: () => AppRoute,
+} as any)
+const ApiV1EntregasRoute = ApiV1EntregasRouteImport.update({
+  id: '/api/v1/entregas',
+  path: '/api/v1/entregas',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicSyncEntregasRoute = ApiPublicSyncEntregasRouteImport.update({
   id: '/api/public/sync-entregas',
@@ -186,6 +192,7 @@ export interface FileRoutesByFullPath {
   '/api/public/register': typeof ApiPublicRegisterRoute
   '/api/public/sync': typeof ApiPublicSyncRoute
   '/api/public/sync-entregas': typeof ApiPublicSyncEntregasRoute
+  '/api/v1/entregas': typeof ApiV1EntregasRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -212,6 +219,7 @@ export interface FileRoutesByTo {
   '/api/public/register': typeof ApiPublicRegisterRoute
   '/api/public/sync': typeof ApiPublicSyncRoute
   '/api/public/sync-entregas': typeof ApiPublicSyncEntregasRoute
+  '/api/v1/entregas': typeof ApiV1EntregasRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -240,6 +248,7 @@ export interface FileRoutesById {
   '/api/public/register': typeof ApiPublicRegisterRoute
   '/api/public/sync': typeof ApiPublicSyncRoute
   '/api/public/sync-entregas': typeof ApiPublicSyncEntregasRoute
+  '/api/v1/entregas': typeof ApiV1EntregasRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -268,6 +277,7 @@ export interface FileRouteTypes {
     | '/api/public/register'
     | '/api/public/sync'
     | '/api/public/sync-entregas'
+    | '/api/v1/entregas'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -294,6 +304,7 @@ export interface FileRouteTypes {
     | '/api/public/register'
     | '/api/public/sync'
     | '/api/public/sync-entregas'
+    | '/api/v1/entregas'
   id:
     | '__root__'
     | '/_app'
@@ -321,6 +332,7 @@ export interface FileRouteTypes {
     | '/api/public/register'
     | '/api/public/sync'
     | '/api/public/sync-entregas'
+    | '/api/v1/entregas'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -339,6 +351,7 @@ export interface RootRouteChildren {
   ApiPublicRegisterRoute: typeof ApiPublicRegisterRoute
   ApiPublicSyncRoute: typeof ApiPublicSyncRoute
   ApiPublicSyncEntregasRoute: typeof ApiPublicSyncEntregasRoute
+  ApiV1EntregasRoute: typeof ApiV1EntregasRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -426,6 +439,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/acessos'
       preLoaderRoute: typeof AppAcessosRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/api/v1/entregas': {
+      id: '/api/v1/entregas'
+      path: '/api/v1/entregas'
+      fullPath: '/api/v1/entregas'
+      preLoaderRoute: typeof ApiV1EntregasRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/sync-entregas': {
       id: '/api/public/sync-entregas'
@@ -565,6 +585,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicRegisterRoute: ApiPublicRegisterRoute,
   ApiPublicSyncRoute: ApiPublicSyncRoute,
   ApiPublicSyncEntregasRoute: ApiPublicSyncEntregasRoute,
+  ApiV1EntregasRoute: ApiV1EntregasRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
