@@ -188,9 +188,20 @@ exit /b 0
 
 :download_fail
 echo.
-echo ERRO: falha ao baixar o instalador.
-echo URL: %INSTALLER_URL%
-echo Verifique sua conexao com a internet e proxies/firewall.
+echo ============================================================
+echo  ERRO: nao foi possivel baixar o instalador automaticamente.
+echo ============================================================
+echo.
+echo  URL tentada: %INSTALLER_URL%
+echo.
+echo  ACAO NECESSARIA:
+echo    1) Abra o arquivo BAIXAR-AGENTE.txt (nesta mesma pasta).
+echo    2) Siga o passo a passo para baixar o firesync-agent-setup.exe
+echo       manualmente e coloca-lo aqui.
+echo    3) Rode este install.bat novamente como Administrador.
+echo.
+echo  Se BAIXAR-AGENTE.txt nao existir, o executavel ja deveria ter
+echo  vindo embutido no ZIP — gere um novo instalador pelo Hub.
 echo.
 pause
 exit /b 2
