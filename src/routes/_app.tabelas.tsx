@@ -49,6 +49,7 @@ function Page() {
   const [selected, setSelected] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [waitElapsed, setWaitElapsed] = useState(0);
+  const [loadStage, setLoadStage] = useState<"enqueue" | "delivered" | "scanning" | "finalizing">("enqueue");
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorMode, setEditorMode] = useState<"create" | "alter">("create");
 
