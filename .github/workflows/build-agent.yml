@@ -57,6 +57,7 @@ jobs:
             agent/dist/firesync-agent.exe
 
       - name: Publish GitHub Release
+        id: publish_release
         if: startsWith(github.ref, 'refs/tags/agent-v') || github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
@@ -68,3 +69,99 @@ jobs:
             agent/dist/firesync-agent.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Confirma que o asset firesync-agent-setup.exe realmente ficou
+      # publicamente acessível no release. Se não estiver (repo privado,
+      # atraso do CDN, upload falho), gera um BAIXAR-AGENTE.txt com o link
+      # correto e faz upload no mesmo release, para o Hub oferecer o TXT
+      # como fallback quando o binário não puder ser embutido no ZIP.
+      - name: Verify release asset + gerar BAIXAR-AGENTE.txt fallback
+        if: startsWith(github.ref, 'refs/tags/agent-v') || github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.inputs.release_tag || github.ref_name }}
+        run: |
+          $repo = "${{ github.repository }}"
+          $tag  = "$env:RELEASE_TAG"
+          $url  = "https://github.com/$repo/releases/download/$tag/firesync-agent-setup.exe"
+          Write-Host "Verificando asset: $url"
+
+          $ok = $false
+          for ($i = 1; $i -le 6; $i++) {
+            try {
+              $r = Invoke-WebRequest -Uri $url -Method Head -MaximumRedirection 5 -UseBasicParsing -ErrorAction Stop
+              if ($r.StatusCode -eq 200) { $ok = $true; break }
+              Write-Host "Tentativa $i: HTTP $($r.StatusCode)"
+            } catch {
+              Write-Host "Tentativa $i falhou: $($_.Exception.Message)"
+            }
+            Start-Sleep -Seconds 10
+          }
+
+          $sha = ""
+          $shaPath = "agent/Output/firesync-agent-setup.exe.sha256"
+          if (Test-Path $shaPath) {
+            $sha = (Get-Content $shaPath -Raw).Trim().Split(' ')[0]
+          }
+
+          $txtPath = "agent/Output/BAIXAR-AGENTE.txt"
+          $lines = @()
+          $lines += "FireSync LocalBridge - BAIXAR AGENTE MANUALMENTE"
+          $lines += "================================================="
+          $lines += ""
+          $lines += "Versao: $tag"
+          $lines += "Gerado: $((Get-Date).ToUniversalTime().ToString('u'))"
+          if ($sha) { $lines += "SHA256: $sha" }
+          $lines += ""
+          $lines += ">>> LINK DIRETO PARA DOWNLOAD <<<"
+          $lines += ""
+          $lines += $url
+          $lines += ""
+          $lines += "Passo a passo:"
+          $lines += "  1) Abra o link acima no navegador."
+          $lines += "  2) Salve com o nome EXATO: firesync-agent-setup.exe"
+          $lines += "  3) Coloque o arquivo na mesma pasta do install.bat."
+          $lines += "  4) Rode install.bat como Administrador."
+          $lines += ""
+          if (-not $ok) {
+            $lines += "AVISO: no momento da publicacao este asset ainda nao"
+            $lines += "estava acessivel publicamente (repo privado, atraso"
+            $lines += "de CDN ou falha no upload). Se o link acima retornar"
+            $lines += "404, confirme com o suporte FireSync."
+          }
+          Set-Content -Path $txtPath -Value ($lines -join "`r`n") -Encoding ASCII
+
+          if ($ok) {
+            Write-Host "OK: asset publicado e acessivel."
+          } else {
+            Write-Host "AVISO: asset nao acessivel apos 6 tentativas."
+            Write-Host "Anexando BAIXAR-AGENTE.txt ao release como fallback."
+          }
+
+      - name: Upload BAIXAR-AGENTE.txt para o release
+        if: startsWith(github.ref, 'refs/tags/agent-v') || github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.release_tag || github.ref_name }}
+          files: agent/Output/BAIXAR-AGENTE.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Falhar workflow se asset nao ficou publico
+        if: startsWith(github.ref, 'refs/tags/agent-v') || github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ github.event.inputs.release_tag || github.ref_name }}
+        run: |
+          $repo = "${{ github.repository }}"
+          $url  = "https://github.com/$repo/releases/download/$env:RELEASE_TAG/firesync-agent-setup.exe"
+          try {
+            $r = Invoke-WebRequest -Uri $url -Method Head -MaximumRedirection 5 -UseBasicParsing -ErrorAction Stop
+            if ($r.StatusCode -ne 200) { throw "HTTP $($r.StatusCode)" }
+            Write-Host "Asset OK em $url"
+          } catch {
+            Write-Error "Asset $url nao esta acessivel: $($_.Exception.Message)"
+            exit 1
+          }
+
