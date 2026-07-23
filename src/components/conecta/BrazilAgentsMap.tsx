@@ -87,7 +87,7 @@ export function BrazilAgentsMap({ agents, loading }: { agents: Agent[]; loading:
   const statesActive = [...byState.entries()].filter(([, v]) => v.online > 0).length;
 
   return (
-    <Card className="relative overflow-hidden p-5 bg-card/60 border-border backdrop-blur-sm">
+    <Card className="lg:col-span-2 relative overflow-hidden p-5 bg-card/60 border-border backdrop-blur-sm">
       <div
         aria-hidden
         className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-primary/10 blur-3xl"
