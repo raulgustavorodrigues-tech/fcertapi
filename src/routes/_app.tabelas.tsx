@@ -343,6 +343,10 @@ function Page() {
                 {loading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
                 Recarregar schema
               </Button>
+              <div className="flex items-center gap-2 text-[11px] font-mono text-muted-foreground" title="COUNT(*) por tabela é caro em bancos grandes. Deixe desligado para varredura rápida (só estrutura).">
+                <Switch checked={includeCounts} onCheckedChange={setIncludeCounts} disabled={loading} id="count-switch" />
+                <Label htmlFor="count-switch" className="cursor-pointer">Contar registros</Label>
+              </div>
               <Button size="sm" onClick={() => { setEditorMode("create"); setEditorOpen(true); }}>
                 <Plus className="h-3.5 w-3.5 mr-1.5" /> Nova tabela
               </Button>
