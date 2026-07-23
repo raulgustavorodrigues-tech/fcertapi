@@ -195,12 +195,15 @@ function Page() {
     }
   }
 
-  async function reloadSchema() {
-    if (!databaseId) return;
+  /** Aguarda um job em background (usado pelo kickoff e pela retomada). */
+  async function trackJob(command_id: string) {
     setLoading(true);
     setWaitElapsed(0);
     setLoadStage("enqueue");
     setProgress(null);
+    setActiveJobId(command_id);
+    saveJob(databaseId, command_id);
+
     const startTs = Date.now();
     const tick = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startTs) / 1000);
@@ -211,11 +214,11 @@ function Page() {
         return prev;
       });
     }, 250);
+
     try {
-      const { command_id } = await enqueueCommand(databaseId, "list_tables", {});
       const row = await awaitCommandResult(command_id, {
-        timeoutMs: 600_000,
-        intervalMs: 1500,
+        timeoutMs: 900_000, // 15 min: job assíncrono, usuário pode sair da tela
+        intervalMs: 2000,
         onUpdate: (r) => {
           if (r?.status === "processing") setLoadStage("scanning");
           else if (r?.status === "pending") {
@@ -229,7 +232,6 @@ function Page() {
         },
       });
       setLoadStage("finalizing");
-      clearInterval(tick);
       if (row.status === "success" && row.result?.tables) {
         const tablesData = row.result.tables;
         setProgress({ done: tablesData.length, total: tablesData.length });
@@ -245,12 +247,38 @@ function Page() {
         toast.error(row.error_message ?? "Falha ao obter schema");
       }
     } catch (e: any) {
-      clearInterval(tick);
       toast.error(e.message ?? "Timeout aguardando agente");
     } finally {
+      clearInterval(tick);
+      saveJob(databaseId, null);
+      setActiveJobId(null);
       setLoading(false);
     }
   }
+
+  async function reloadSchema() {
+    if (!databaseId || loading) return;
+    try {
+      const { command_id } = await enqueueCommand(databaseId, "list_tables", {
+        include_counts: includeCounts,
+        batch_size: 100,
+      });
+      trackJob(command_id); // não-bloqueante: usuário pode navegar
+    } catch (e: any) {
+      toast.error(e.message ?? "Falha ao enfileirar job");
+    }
+  }
+
+  // Retoma job em andamento quando o usuário volta à tela ou troca de banco
+  useEffect(() => {
+    if (!databaseId) return;
+    const jobs = loadJobsMap();
+    const pending = jobs[databaseId];
+    if (pending && pending !== activeJobId) {
+      trackJob(pending);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [databaseId]);
 
   // Percentual + ETA: usa progresso real do agente quando disponível; senão,
   // estima com base no tamanho do cache anterior (nº de tabelas conhecidas).
