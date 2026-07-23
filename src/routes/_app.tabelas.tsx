@@ -324,7 +324,7 @@ function Page() {
                 </span>
                 <span className="text-muted-foreground">— {STAGES[stageIndex]?.hint}</span>
               </div>
-              <span className="text-[10px] text-muted-foreground">{waitElapsed}s / máx. 120s</span>
+              <span className="text-[10px] text-muted-foreground">{waitElapsed}s / máx. 180s</span>
             </div>
             <ol className="grid grid-cols-4 gap-2">
               {STAGES.map((s, i) => {
@@ -358,11 +358,25 @@ function Page() {
                 );
               })}
             </ol>
-            <div className="h-1 rounded bg-border overflow-hidden">
-              <div
-                className="h-full bg-primary transition-all duration-500"
-                style={{ width: `${((stageIndex + 1) / STAGES.length) * 100}%` }}
-              />
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-[10px] font-mono">
+                <span className="text-muted-foreground">
+                  {hasRealProgress
+                    ? <>Tabelas varridas: <span className="text-primary font-semibold">{effectiveDone}</span> / {effectiveTotal}{progress?.label && progress.label !== "scan_start" ? <> · <span className="truncate">{progress.label}</span></> : null}</>
+                    : effectiveTotal > 0
+                      ? <>Estimativa baseada no schema anterior ({effectiveTotal} tabelas)</>
+                      : <>Aguardando total de tabelas do agente…</>}
+                </span>
+                <span className="text-primary font-semibold">
+                  {percent}%{etaLabel ? <span className="text-muted-foreground font-normal"> · {etaLabel}</span> : null}
+                </span>
+              </div>
+              <div className="h-2 rounded bg-border overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-500 ${hasRealProgress ? "bg-primary" : "bg-primary/60"}`}
+                  style={{ width: `${percent}%` }}
+                />
+              </div>
             </div>
           </div>
         )}
