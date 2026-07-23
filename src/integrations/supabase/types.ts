@@ -160,6 +160,101 @@ export type Database = {
           },
         ]
       }
+      api_access_log: {
+        Row: {
+          api_key_id: string | null
+          created_at: string
+          endpoint: string
+          id: number
+          params: Json | null
+          rows_returned: number | null
+          status: number | null
+        }
+        Insert: {
+          api_key_id?: string | null
+          created_at?: string
+          endpoint: string
+          id?: number
+          params?: Json | null
+          rows_returned?: number | null
+          status?: number | null
+        }
+        Update: {
+          api_key_id?: string | null
+          created_at?: string
+          endpoint?: string
+          id?: number
+          params?: Json | null
+          rows_returned?: number | null
+          status?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_access_log_api_key_id_fkey"
+            columns: ["api_key_id"]
+            isOneToOne: false
+            referencedRelation: "api_keys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      api_keys: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          database_id: string | null
+          id: string
+          key_hash: string
+          key_prefix: string
+          last_used_at: string | null
+          name: string
+          revoked_at: string | null
+          revoked_reason: string | null
+          scopes: string[]
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          database_id?: string | null
+          id?: string
+          key_hash: string
+          key_prefix: string
+          last_used_at?: string | null
+          name: string
+          revoked_at?: string | null
+          revoked_reason?: string | null
+          scopes?: string[]
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          database_id?: string | null
+          id?: string
+          key_hash?: string
+          key_prefix?: string
+          last_used_at?: string | null
+          name?: string
+          revoked_at?: string | null
+          revoked_reason?: string | null
+          scopes?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_keys_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "api_keys_database_id_fkey"
+            columns: ["database_id"]
+            isOneToOne: false
+            referencedRelation: "databases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       command_results: {
         Row: {
           agent_id: string | null
