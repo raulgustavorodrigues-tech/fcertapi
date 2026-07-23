@@ -16,6 +16,8 @@ import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
   PieChart, Pie, Cell, BarChart, Bar,
 } from "recharts";
+import { BrazilAgentsMap } from "@/components/conecta/BrazilAgentsMap";
+
 
 export const Route = createFileRoute("/_app/")({
   component: DashboardPage,
