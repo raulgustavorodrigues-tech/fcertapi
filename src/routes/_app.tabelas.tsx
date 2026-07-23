@@ -196,7 +196,7 @@ function Page() {
     try {
       const { command_id } = await enqueueCommand(databaseId, "list_tables", {});
       const row = await awaitCommandResult(command_id, {
-        timeoutMs: 180_000,
+        timeoutMs: 600_000,
         intervalMs: 1500,
         onUpdate: (r) => {
           if (r?.status === "processing") setLoadStage("scanning");
