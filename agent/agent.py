@@ -881,7 +881,7 @@ def handle_command(cmd: Dict[str, Any]) -> None:
     t0 = time.time()
     try:
         if   ctype == "ping_test":    res = cmd_ping_test()
-        elif ctype == "list_tables":  res = cmd_list_tables()
+        elif ctype == "list_tables":  res = cmd_list_tables(cid)
         elif ctype == "run_query":    res = cmd_run_query(payload)
         elif ctype == "network_test": res = cmd_network_test(payload)
         elif ctype == "force_sync":
