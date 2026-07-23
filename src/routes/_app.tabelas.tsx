@@ -183,7 +183,7 @@ function Page() {
     const tick = setInterval(() => setWaitElapsed(Math.floor((Date.now() - startTs) / 1000)), 250);
     try {
       const { command_id } = await enqueueCommand(databaseId, "list_tables", {});
-      const row = await awaitCommandResult(command_id, { timeoutMs: 30_000, intervalMs: 1500 });
+      const row = await awaitCommandResult(command_id, { timeoutMs: 120_000, intervalMs: 1500 });
       clearInterval(tick);
       if (row.status === "success" && row.result?.tables) {
         const tablesData = row.result.tables;
