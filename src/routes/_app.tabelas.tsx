@@ -256,7 +256,7 @@ function Page() {
         {loading && (
           <div className="mt-3 p-3 rounded border border-dashed border-primary/30 bg-primary/5 flex items-center gap-3 text-xs font-mono">
             <Clock className="h-4 w-4 text-primary animate-pulse" />
-            <span>Solicitando schema ao agente… ({waitElapsed}s / máx. 30s)</span>
+            <span>Solicitando schema ao agente… ({waitElapsed}s / máx. 120s)</span>
           </div>
         )}
       </Card>
