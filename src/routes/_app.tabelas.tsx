@@ -374,7 +374,7 @@ function Page() {
                 </span>
                 <span className="text-muted-foreground">— {STAGES[stageIndex]?.hint}</span>
               </div>
-              <span className="text-[10px] text-muted-foreground">{waitElapsed}s / máx. 180s</span>
+              <span className="text-[10px] text-muted-foreground">{waitElapsed}s · job em background</span>
             </div>
             <ol className="grid grid-cols-4 gap-2">
               {STAGES.map((s, i) => {
