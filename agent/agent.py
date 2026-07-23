@@ -712,7 +712,27 @@ def cmd_network_test(_: Dict[str, Any]) -> Dict[str, Any]:
     return {"steps": steps, "ok": all(s["ok"] for s in steps)}
 
 
-def cmd_list_tables(command_id: Optional[str] = None) -> Dict[str, Any]:
+def cmd_list_tables(command_id: Optional[str] = None,
+                    payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Varredura otimizada de schema.
+
+    Otimizações vs 1.5.2:
+      - Colunas de TODAS as tabelas em UMA query (elimina N+1 no RDB$RELATION_FIELDS)
+      - COUNT(*) por tabela é OPCIONAL (payload.include_counts, default False),
+        pois em bancos grandes é o maior custo (varredura full-table por tabela)
+      - Progresso reportado em lotes (payload.batch_size, default 100 tabelas)
+
+    payload:
+      include_counts: bool = False  -> se True, roda COUNT(*) por tabela
+      batch_size:     int  = 100    -> intervalo de progresso (nº de tabelas)
+    """
+    payload = payload or {}
+    include_counts = bool(payload.get("include_counts", False))
+    try:
+        batch_size = max(1, int(payload.get("batch_size", 100)))
+    except Exception:
+        batch_size = 100
+
     con = _db_conn()
     with _db_lock:
         cur = con.cursor()
@@ -721,45 +741,59 @@ def cmd_list_tables(command_id: Optional[str] = None) -> Dict[str, Any]:
         tables = [r[0] for r in cur.fetchall()]
         total = len(tables)
         started_at = datetime.now(timezone.utc).isoformat()
-        # Sinaliza início do scan (0 / total) para a UI já mostrar o denominador
         if command_id:
             post_progress(command_id, 0, total,
                           label="scan_start", started_at=started_at)
+
+        # 1) TODAS as colunas em UMA query só (grande ganho em bancos grandes)
+        cur.execute(
+            "SELECT TRIM(rf.RDB$RELATION_NAME), TRIM(rf.RDB$FIELD_NAME), "
+            "f.RDB$FIELD_TYPE, COALESCE(rf.RDB$NULL_FLAG, 0), rf.RDB$FIELD_POSITION "
+            "FROM RDB$RELATION_FIELDS rf "
+            "JOIN RDB$RELATIONS r ON r.RDB$RELATION_NAME = rf.RDB$RELATION_NAME "
+            "JOIN RDB$FIELDS f ON f.RDB$FIELD_NAME = rf.RDB$FIELD_SOURCE "
+            "WHERE r.RDB$SYSTEM_FLAG = 0 AND r.RDB$VIEW_BLR IS NULL "
+            "ORDER BY rf.RDB$RELATION_NAME, rf.RDB$FIELD_POSITION")
+        cols_by_table: Dict[str, list] = {}
+        for tname, cname, ftype, notnull, _pos in cur.fetchall():
+            cols_by_table.setdefault(tname, []).append({
+                "name": cname,
+                "type": _firebird_type_name(ftype),
+                "nullable": (int(notnull) == 0),
+            })
+
+        if command_id:
+            post_progress(command_id, min(batch_size, total), total,
+                          label="colunas_carregadas", started_at=started_at)
+
+        # 2) Monta resultado. COUNT(*) é opt-in — pesado em bancos grandes.
         out = []
         last_emit = time.time()
         for idx, t in enumerate(tables, start=1):
-            # colunas da tabela (nome, tipo, nullability)
-            cur.execute(
-                "SELECT TRIM(rf.RDB$FIELD_NAME), f.RDB$FIELD_TYPE, "
-                "COALESCE(rf.RDB$NULL_FLAG, 0) "
-                "FROM RDB$RELATION_FIELDS rf "
-                "JOIN RDB$FIELDS f ON f.RDB$FIELD_NAME = rf.RDB$FIELD_SOURCE "
-                "WHERE rf.RDB$RELATION_NAME = ? "
-                "ORDER BY rf.RDB$FIELD_POSITION", (t,))
-            cols = []
-            for cn, ftype, notnull in cur.fetchall():
-                cols.append({
-                    "name": cn,
-                    "type": _firebird_type_name(ftype),
-                    "nullable": (int(notnull) == 0),
-                })
-            # contagem de linhas
-            try:
-                cur.execute(f'SELECT COUNT(*) FROM "{t}"')
-                rc = int(cur.fetchone()[0])
-            except Exception:
-                rc = 0
+            cols = cols_by_table.get(t, [])
+            rc = -1  # -1 = não contado
+            if include_counts:
+                try:
+                    cur.execute(f'SELECT COUNT(*) FROM "{t}"')
+                    rc = int(cur.fetchone()[0])
+                except Exception:
+                    rc = 0
             out.append({"name": t, "row_count": rc, "columns": cols,
                         "column_count": len(cols)})
-            # Emite progresso a cada ~1.5s ou nas últimas tabelas
             now = time.time()
-            if command_id and (now - last_emit >= 1.5 or idx == total):
+            if command_id and (idx % batch_size == 0 or idx == total
+                               or now - last_emit >= 1.5):
                 post_progress(command_id, idx, total,
                               label=t, started_at=started_at)
                 last_emit = now
         try: con.rollback()
         except Exception: pass
-        return {"tables": out, "total": total}
+        return {
+            "tables": out,
+            "total": total,
+            "include_counts": include_counts,
+            "batch_size": batch_size,
+        }
 
 
 
