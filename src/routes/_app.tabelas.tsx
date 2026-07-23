@@ -34,13 +34,30 @@ function serializeSyncTables(mode: "ALL" | "SELECTED", set: Set<string>): string
 }
 
 function getTableRowCount(table: any): number {
-  return Number(table?.row_count ?? table?.rows ?? 0);
+  const n = Number(table?.row_count ?? table?.rows ?? 0);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
 export const Route = createFileRoute("/_app/tabelas")({ component: Page });
 
 // MOCK_SCHEMA removido — o schema agora vem exclusivamente de schema_cache
 // (populado pelo comando list_tables enviado ao agente).
+
+const JOB_STORAGE_KEY = "conecta.schemaReload.jobs";
+
+function loadJobsMap(): Record<string, string> {
+  try {
+    const raw = typeof window !== "undefined" ? window.localStorage.getItem(JOB_STORAGE_KEY) : null;
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+function saveJob(databaseId: string, commandId: string | null) {
+  if (typeof window === "undefined") return;
+  const map = loadJobsMap();
+  if (commandId) map[databaseId] = commandId;
+  else delete map[databaseId];
+  window.localStorage.setItem(JOB_STORAGE_KEY, JSON.stringify(map));
+}
 
 function Page() {
   const qc = useQueryClient();
@@ -51,6 +68,8 @@ function Page() {
   const [waitElapsed, setWaitElapsed] = useState(0);
   const [loadStage, setLoadStage] = useState<"enqueue" | "delivered" | "scanning" | "finalizing">("enqueue");
   const [progress, setProgress] = useState<{ done: number; total: number; label?: string } | null>(null);
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const [includeCounts, setIncludeCounts] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorMode, setEditorMode] = useState<"create" | "alter">("create");
 
@@ -177,12 +196,15 @@ function Page() {
     }
   }
 
-  async function reloadSchema() {
-    if (!databaseId) return;
+  /** Aguarda um job em background (usado pelo kickoff e pela retomada). */
+  async function trackJob(command_id: string) {
     setLoading(true);
     setWaitElapsed(0);
     setLoadStage("enqueue");
     setProgress(null);
+    setActiveJobId(command_id);
+    saveJob(databaseId, command_id);
+
     const startTs = Date.now();
     const tick = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startTs) / 1000);
@@ -193,11 +215,11 @@ function Page() {
         return prev;
       });
     }, 250);
+
     try {
-      const { command_id } = await enqueueCommand(databaseId, "list_tables", {});
       const row = await awaitCommandResult(command_id, {
-        timeoutMs: 600_000,
-        intervalMs: 1500,
+        timeoutMs: 900_000, // 15 min: job assíncrono, usuário pode sair da tela
+        intervalMs: 2000,
         onUpdate: (r) => {
           if (r?.status === "processing") setLoadStage("scanning");
           else if (r?.status === "pending") {
@@ -211,7 +233,6 @@ function Page() {
         },
       });
       setLoadStage("finalizing");
-      clearInterval(tick);
       if (row.status === "success" && row.result?.tables) {
         const tablesData = row.result.tables;
         setProgress({ done: tablesData.length, total: tablesData.length });
@@ -227,12 +248,38 @@ function Page() {
         toast.error(row.error_message ?? "Falha ao obter schema");
       }
     } catch (e: any) {
-      clearInterval(tick);
       toast.error(e.message ?? "Timeout aguardando agente");
     } finally {
+      clearInterval(tick);
+      saveJob(databaseId, null);
+      setActiveJobId(null);
       setLoading(false);
     }
   }
+
+  async function reloadSchema() {
+    if (!databaseId || loading) return;
+    try {
+      const { command_id } = await enqueueCommand(databaseId, "list_tables", {
+        include_counts: includeCounts,
+        batch_size: 100,
+      });
+      trackJob(command_id); // não-bloqueante: usuário pode navegar
+    } catch (e: any) {
+      toast.error(e.message ?? "Falha ao enfileirar job");
+    }
+  }
+
+  // Retoma job em andamento quando o usuário volta à tela ou troca de banco
+  useEffect(() => {
+    if (!databaseId) return;
+    const jobs = loadJobsMap();
+    const pending = jobs[databaseId];
+    if (pending && pending !== activeJobId) {
+      trackJob(pending);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [databaseId]);
 
   // Percentual + ETA: usa progresso real do agente quando disponível; senão,
   // estima com base no tamanho do cache anterior (nº de tabelas conhecidas).
@@ -297,6 +344,10 @@ function Page() {
                 {loading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
                 Recarregar schema
               </Button>
+              <div className="flex items-center gap-2 text-[11px] font-mono text-muted-foreground" title="COUNT(*) por tabela é caro em bancos grandes. Deixe desligado para varredura rápida (só estrutura).">
+                <Switch checked={includeCounts} onCheckedChange={setIncludeCounts} disabled={loading} id="count-switch" />
+                <Label htmlFor="count-switch" className="cursor-pointer">Contar registros</Label>
+              </div>
               <Button size="sm" onClick={() => { setEditorMode("create"); setEditorOpen(true); }}>
                 <Plus className="h-3.5 w-3.5 mr-1.5" /> Nova tabela
               </Button>
@@ -324,7 +375,7 @@ function Page() {
                 </span>
                 <span className="text-muted-foreground">— {STAGES[stageIndex]?.hint}</span>
               </div>
-              <span className="text-[10px] text-muted-foreground">{waitElapsed}s / máx. 180s</span>
+              <span className="text-[10px] text-muted-foreground">{waitElapsed}s · job em background</span>
             </div>
             <ol className="grid grid-cols-4 gap-2">
               {STAGES.map((s, i) => {
