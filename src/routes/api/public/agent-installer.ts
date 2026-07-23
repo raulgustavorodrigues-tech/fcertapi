@@ -188,9 +188,20 @@ exit /b 0
 
 :download_fail
 echo.
-echo ERRO: falha ao baixar o instalador.
-echo URL: %INSTALLER_URL%
-echo Verifique sua conexao com a internet e proxies/firewall.
+echo ============================================================
+echo  ERRO: nao foi possivel baixar o instalador automaticamente.
+echo ============================================================
+echo.
+echo  URL tentada: %INSTALLER_URL%
+echo.
+echo  ACAO NECESSARIA:
+echo    1) Abra o arquivo BAIXAR-AGENTE.txt (nesta mesma pasta).
+echo    2) Siga o passo a passo para baixar o firesync-agent-setup.exe
+echo       manualmente e coloca-lo aqui.
+echo    3) Rode este install.bat novamente como Administrador.
+echo.
+echo  Se BAIXAR-AGENTE.txt nao existir, o executavel ja deveria ter
+echo  vindo embutido no ZIP — gere um novo instalador pelo Hub.
 echo.
 pause
 exit /b 2
@@ -233,18 +244,23 @@ Desinstalar:
         // alcança o GitHub sem o problema de TLS do servidor local) e embute
         // no ZIP, para o operador não precisar baixar nada na máquina.
         let exeBytes: Uint8Array | null = null;
+        let fetchStatus: number | string = "skipped";
         try {
           const exeResp = await fetch(installerUrl, { redirect: "follow" });
+          fetchStatus = exeResp.status;
           if (exeResp.ok) {
             const buf = await exeResp.arrayBuffer();
             const arr = new Uint8Array(buf);
             // valida assinatura MZ (executável Windows) antes de embutir
             if (arr.length > 1000 && arr[0] === 0x4d && arr[1] === 0x5a) {
               exeBytes = arr;
+            } else {
+              fetchStatus = `invalid_binary(len=${arr.length})`;
             }
           }
-        } catch {
-          exeBytes = null; // se falhar, o ZIP sai sem o exe e o .bat baixa como fallback
+        } catch (e) {
+          fetchStatus = `fetch_error:${(e as Error).message}`;
+          exeBytes = null;
         }
 
         const files: Record<string, Uint8Array> = {
@@ -254,7 +270,62 @@ Desinstalar:
         };
         if (exeBytes) {
           files[`${folder}/firesync-agent-setup.exe`] = exeBytes;
+        } else {
+          // Executável indisponível no servidor (release não publicado,
+          // repo privado, GitHub fora do ar, etc.). Gera um TXT bem visível
+          // com o link direto + passo a passo em pt-BR, para o operador
+          // baixar manualmente e colocar na mesma pasta antes de rodar o .bat.
+          const baixarTxt = `FireSync LocalBridge — BAIXAR AGENTE MANUALMENTE
+=================================================
+
+O executável do agente NAO pode ser embutido neste ZIP agora
+(status do download no servidor: ${fetchStatus}).
+
+Faca o download manual do instalador oficial e coloque o
+arquivo NA MESMA PASTA deste LEIA-ME antes de rodar o install.bat.
+
+>>> LINK DIRETO PARA DOWNLOAD <<<
+
+${installerUrl}
+
+Passo a passo:
+
+  1) Abra o link acima no navegador (Chrome, Edge, Firefox).
+     Se o GitHub pedir login, use uma conta com acesso ao repositorio
+     do FireSync — o binario pode estar em release privado.
+
+  2) Salve o arquivo com o nome EXATO:
+
+         firesync-agent-setup.exe
+
+  3) Mova o arquivo para dentro desta pasta:
+
+         ${folder}\\
+
+     A pasta deve conter, no minimo:
+         - install.bat
+         - firesync-agent.env
+         - firesync-agent-setup.exe   <-- voce acabou de colocar aqui
+         - LEIA-ME.txt
+         - BAIXAR-AGENTE.txt (este arquivo)
+
+  4) Clique com o botao direito em install.bat > "Executar como
+     administrador". O instalador vai registrar o servico Windows
+     "FireSyncAgent" e iniciar automaticamente.
+
+Se o link acima retornar 404:
+  - Confirme com o suporte FireSync qual e a versao publicada.
+  - Verifique se voce tem permissao no repositorio (release privado).
+  - Como alternativa, peca o .exe por outro canal (drive, e-mail) e
+    salve com o mesmo nome nesta mesma pasta.
+
+Gerado em: ${new Date().toISOString()}
+Empresa:   ${db.companies?.name ?? "-"}
+Banco:     ${db.name}
+`;
+          files[`${folder}/BAIXAR-AGENTE.txt`] = strToU8(baixarTxt);
         }
+
 
         const zipped = zipSync(files, { level: 6 });
         const ab = zipped.buffer.slice(
