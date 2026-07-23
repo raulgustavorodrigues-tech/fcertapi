@@ -22,6 +22,7 @@ import {
 import { Plus, Search, Building2, Database as DatabaseIcon, Pencil, Power } from "lucide-react";
 import { toast } from "sonner";
 import { formatCNPJ, formatDateTime } from "@/lib/format";
+import { BR_STATES as BR_UFS } from "@/components/conecta/br-map-data";
 
 export const Route = createFileRoute("/_app/empresas")({
   component: EmpresasPage,
@@ -284,7 +285,14 @@ function CompanyDialog({
         </div>
         <div className="space-y-1.5">
           <Label>Estado</Label>
-          <Input maxLength={2} value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value.toUpperCase() })} />
+          <Select value={form.state || undefined} onValueChange={(v) => setForm({ ...form, state: v })}>
+            <SelectTrigger><SelectValue placeholder="Selecione a UF" /></SelectTrigger>
+            <SelectContent className="max-h-72">
+              {BR_UFS.map((s) => (
+                <SelectItem key={s.uf} value={s.uf}>{s.uf} — {s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="col-span-2 space-y-1.5">
           <Label>Observações</Label>

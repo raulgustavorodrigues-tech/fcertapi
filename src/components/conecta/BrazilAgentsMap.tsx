@@ -1,49 +1,17 @@
-import { useMemo } from "react";
+import { useMemo, useState, useRef } from "react";
 import { Card } from "@/components/ui/card";
-import { MapPin, Radio } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
+} from "@/components/ui/sheet";
+import { MapPin, Radio, Circle, Database as DatabaseIcon, Building2 } from "lucide-react";
+import { BR_STATES, BR_MAP_WIDTH, BR_MAP_HEIGHT } from "./br-map-data";
+import { formatRelative } from "@/lib/format";
 
-/**
- * Mapa do Brasil com marcadores de agentes ativos por UF.
- * Cada agente pode informar sua UF em system_info.uf (ou state / location.uf).
- * Sem UF: entra em "sem localização" e não aparece no mapa.
- */
-
-type StateDot = { uf: string; name: string; x: number; y: number };
-
-const STATES: StateDot[] = [
-  { uf: "AC", name: "Acre", x: 95, y: 250 },
-  { uf: "AM", name: "Amazonas", x: 165, y: 200 },
-  { uf: "RR", name: "Roraima", x: 180, y: 125 },
-  { uf: "AP", name: "Amapá", x: 275, y: 130 },
-  { uf: "PA", name: "Pará", x: 260, y: 195 },
-  { uf: "RO", name: "Rondônia", x: 150, y: 265 },
-  { uf: "TO", name: "Tocantins", x: 305, y: 245 },
-  { uf: "MA", name: "Maranhão", x: 340, y: 205 },
-  { uf: "PI", name: "Piauí", x: 370, y: 230 },
-  { uf: "CE", name: "Ceará", x: 405, y: 190 },
-  { uf: "RN", name: "R.G.Norte", x: 445, y: 200 },
-  { uf: "PB", name: "Paraíba", x: 455, y: 218 },
-  { uf: "PE", name: "Pernambuco", x: 435, y: 238 },
-  { uf: "AL", name: "Alagoas", x: 450, y: 258 },
-  { uf: "SE", name: "Sergipe", x: 430, y: 275 },
-  { uf: "BA", name: "Bahia", x: 385, y: 290 },
-  { uf: "MT", name: "Mato Grosso", x: 230, y: 280 },
-  { uf: "MS", name: "M.G.do Sul", x: 245, y: 360 },
-  { uf: "GO", name: "Goiás", x: 300, y: 320 },
-  { uf: "DF", name: "Distrito Federal", x: 325, y: 308 },
-  { uf: "MG", name: "Minas Gerais", x: 355, y: 340 },
-  { uf: "ES", name: "E.Santo", x: 405, y: 355 },
-  { uf: "RJ", name: "R.Janeiro", x: 390, y: 380 },
-  { uf: "SP", name: "São Paulo", x: 330, y: 385 },
-  { uf: "PR", name: "Paraná", x: 295, y: 415 },
-  { uf: "SC", name: "S.Catarina", x: 300, y: 440 },
-  { uf: "RS", name: "R.G.do Sul", x: 265, y: 470 },
-];
-
-// Contorno aproximado do Brasil (viewBox 500x520).
-// Suficiente para o mapa ser reconhecível sem virar um trabalho de cartografia.
-const BRAZIL_OUTLINE =
-  "M 155,100 L 200,80 L 250,92 L 300,102 L 340,125 L 380,150 L 420,170 L 455,190 L 475,215 L 478,238 L 470,258 L 458,278 L 450,305 L 435,340 L 418,370 L 398,395 L 372,415 L 340,435 L 310,455 L 275,475 L 245,470 L 220,450 L 200,420 L 180,390 L 160,355 L 145,320 L 130,285 L 115,255 L 95,225 L 82,195 L 85,160 L 105,130 L 130,110 L 155,100 Z";
+const UF_NAME: Record<string, string> = Object.fromEntries(
+  BR_STATES.map((s) => [s.uf, s.name]),
+);
 
 type Agent = {
   id: string;
@@ -52,50 +20,63 @@ type Agent = {
   status?: string | null;
   last_heartbeat_at?: string | null;
   system_info?: any;
+  database_id?: string | null;
+  databases?: { name?: string | null; companies?: { name?: string | null; state?: string | null } | null } | null;
 };
+
+type AgentBucket = { online: Agent[]; stale: Agent[]; offline: Agent[]; all: Agent[] };
+
+function ufOf(a: Agent): string {
+  const raw =
+    a.databases?.companies?.state ??
+    a.system_info?.uf ??
+    a.system_info?.state ??
+    a.system_info?.location?.uf ??
+    a.system_info?.location?.state ??
+    "";
+  return String(raw).toUpperCase().trim().slice(0, 2);
+}
+
+function classify(a: Agent, now: number): "online" | "stale" | "offline" {
+  if (!a.last_heartbeat_at) return "offline";
+  const age = now - new Date(a.last_heartbeat_at).getTime();
+  if (age < 60_000) return "online";
+  if (age < 5 * 60_000) return "stale";
+  return "offline";
+}
 
 export function BrazilAgentsMap({ agents, loading }: { agents: Agent[]; loading: boolean }) {
   const now = Date.now();
+  const [hover, setHover] = useState<{ uf: string; x: number; y: number } | null>(null);
+  const [selectedUf, setSelectedUf] = useState<string | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
 
   const byState = useMemo(() => {
-    const m = new Map<string, { online: number; offline: number; total: number }>();
+    const m = new Map<string, AgentBucket>();
     for (const a of agents) {
-      const raw =
-        a.system_info?.uf ??
-        a.system_info?.state ??
-        a.system_info?.location?.uf ??
-        a.system_info?.location?.state ??
-        "";
-      const uf = String(raw).toUpperCase().trim().slice(0, 2);
+      const uf = ufOf(a);
       if (!uf) continue;
-      const online =
-        !!a.last_heartbeat_at &&
-        now - new Date(a.last_heartbeat_at).getTime() < 60_000;
-      const cur = m.get(uf) ?? { online: 0, offline: 0, total: 0 };
-      cur.total++;
-      if (online) cur.online++;
-      else cur.offline++;
-      m.set(uf, cur);
+      const bucket = m.get(uf) ?? { online: [], stale: [], offline: [], all: [] };
+      bucket.all.push(a);
+      bucket[classify(a, now)].push(a);
+      m.set(uf, bucket);
     }
     return m;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agents]);
 
-  const totalOnline = [...byState.values()].reduce((s, v) => s + v.online, 0);
-  const totalMapped = [...byState.values()].reduce((s, v) => s + v.total, 0);
+  const totalOnline = [...byState.values()].reduce((s, v) => s + v.online.length, 0);
+  const totalMapped = [...byState.values()].reduce((s, v) => s + v.all.length, 0);
   const withoutLocation = agents.length - totalMapped;
-  const statesActive = [...byState.entries()].filter(([, v]) => v.online > 0).length;
+  const statesActive = [...byState.entries()].filter(([, v]) => v.online.length > 0).length;
+
+  const hoveredBucket = hover ? byState.get(hover.uf) : null;
+  const selectedBucket = selectedUf ? byState.get(selectedUf) : null;
 
   return (
     <Card className="lg:col-span-2 relative overflow-hidden p-5 bg-card/60 border-border backdrop-blur-sm">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-primary/10 blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-info/10 blur-3xl"
-      />
+      <div aria-hidden className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
+      <div aria-hidden className="pointer-events-none absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-info/10 blur-3xl" />
 
       <div className="relative flex items-start justify-between mb-4 gap-3 flex-wrap">
         <div>
@@ -104,7 +85,7 @@ export function BrazilAgentsMap({ agents, loading }: { agents: Agent[]; loading:
             Mapa do Brasil — Agentes ativos
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Distribuição geográfica dos agentes FireSync em tempo real
+            Passe o mouse para detalhes · clique em uma UF para ver os agentes
           </p>
         </div>
         <div className="flex items-center gap-3 text-[11px] font-mono">
@@ -122,18 +103,20 @@ export function BrazilAgentsMap({ agents, loading }: { agents: Agent[]; loading:
         </div>
       </div>
 
-      <div className="relative w-full mx-auto" style={{ maxWidth: 560 }}>
-        <svg viewBox="0 0 500 520" className="w-full h-auto block">
+      <div className="relative w-full mx-auto" style={{ maxWidth: 640 }}>
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${BR_MAP_WIDTH} ${BR_MAP_HEIGHT}`}
+          className="w-full h-auto block"
+          onMouseLeave={() => setHover(null)}
+        >
           <defs>
-            <radialGradient id="brFill" cx="50%" cy="45%" r="65%">
-              <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.14" />
-              <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.02" />
+            <radialGradient id="brBg" cx="50%" cy="45%" r="65%">
+              <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.10" />
+              <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
             </radialGradient>
-            <pattern id="brGrid" width="14" height="14" patternUnits="userSpaceOnUse">
-              <path d="M 14 0 L 0 0 0 14" fill="none" stroke="var(--border)" strokeWidth="0.4" opacity="0.55" />
-            </pattern>
-            <filter id="dotGlow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="2.5" result="b" />
+            <filter id="brGlow" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur stdDeviation="6" result="b" />
               <feMerge>
                 <feMergeNode in="b" />
                 <feMergeNode in="SourceGraphic" />
@@ -141,88 +124,133 @@ export function BrazilAgentsMap({ agents, loading }: { agents: Agent[]; loading:
             </filter>
           </defs>
 
-          {/* Silhueta do Brasil */}
-          <path d={BRAZIL_OUTLINE} fill="url(#brFill)" />
-          <path d={BRAZIL_OUTLINE} fill="url(#brGrid)" opacity="0.9" />
-          <path
-            d={BRAZIL_OUTLINE}
-            fill="none"
-            stroke="var(--primary)"
-            strokeWidth="1.2"
-            strokeOpacity="0.6"
-            filter="url(#dotGlow)"
-          />
+          <rect x={0} y={0} width={BR_MAP_WIDTH} height={BR_MAP_HEIGHT} fill="url(#brBg)" />
 
-          {/* Marcadores das UFs */}
-          {STATES.map((s) => {
+          {/* Estados */}
+          {BR_STATES.map((s) => {
             const info = byState.get(s.uf);
-            const hasOnline = (info?.online ?? 0) > 0;
-            const hasAgent = (info?.total ?? 0) > 0;
-            const color = hasOnline
-              ? "var(--success)"
-              : hasAgent
-                ? "var(--warning)"
-                : "var(--muted-foreground)";
-            const r = hasOnline ? 5.5 : hasAgent ? 4.5 : 2.2;
-            const labelOpacity = hasAgent ? 1 : 0.5;
+            const online = info?.online.length ?? 0;
+            const total = info?.all.length ?? 0;
+            const isHover = hover?.uf === s.uf;
+            const isSelected = selectedUf === s.uf;
+
+            const fill =
+              online > 0
+                ? "var(--success)"
+                : total > 0
+                  ? "var(--warning)"
+                  : "var(--muted)";
+            const fillOpacity = online > 0 ? 0.55 : total > 0 ? 0.35 : 0.10;
 
             return (
-              <g key={s.uf}>
-                {hasOnline && (
-                  <>
-                    <circle cx={s.x} cy={s.y} r={r + 3} fill={color} opacity="0.25">
-                      <animate
-                        attributeName="r"
-                        values={`${r + 2};${r + 12};${r + 2}`}
-                        dur="2.4s"
-                        repeatCount="indefinite"
-                      />
-                      <animate
-                        attributeName="opacity"
-                        values="0.55;0;0.55"
-                        dur="2.4s"
-                        repeatCount="indefinite"
-                      />
-                    </circle>
-                  </>
+              <path
+                key={s.uf}
+                d={s.d}
+                fill={fill}
+                fillOpacity={isHover || isSelected ? Math.min(1, fillOpacity + 0.35) : fillOpacity}
+                stroke={isSelected ? "var(--primary)" : "var(--border)"}
+                strokeWidth={isSelected ? 1.6 : isHover ? 1.2 : 0.6}
+                strokeOpacity={0.9}
+                filter={online > 0 && isHover ? "url(#brGlow)" : undefined}
+                className="cursor-pointer transition-[fill-opacity,stroke-width] duration-150"
+                onMouseMove={(e) => {
+                  const rect = svgRef.current!.getBoundingClientRect();
+                  setHover({
+                    uf: s.uf,
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top,
+                  });
+                }}
+                onMouseEnter={(e) => {
+                  const rect = svgRef.current!.getBoundingClientRect();
+                  setHover({
+                    uf: s.uf,
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top,
+                  });
+                }}
+                onClick={() => setSelectedUf(s.uf)}
+              >
+                <title>
+                  {s.name} ({s.uf}) — {info ? `${online}/${total} online` : "sem agente"}
+                </title>
+              </path>
+            );
+          })}
+
+          {/* Pulsos e labels */}
+          {BR_STATES.map((s) => {
+            const info = byState.get(s.uf);
+            const online = info?.online.length ?? 0;
+            const total = info?.all.length ?? 0;
+            if (!total && (hover?.uf !== s.uf)) return null;
+            const color = online > 0 ? "var(--success)" : total > 0 ? "var(--warning)" : "var(--muted-foreground)";
+            return (
+              <g key={`m-${s.uf}`} pointerEvents="none">
+                {online > 0 && (
+                  <circle cx={s.lx} cy={s.ly} r={6} fill={color} opacity="0.35">
+                    <animate attributeName="r" values="4;14;4" dur="2.4s" repeatCount="indefinite" />
+                    <animate attributeName="opacity" values="0.55;0;0.55" dur="2.4s" repeatCount="indefinite" />
+                  </circle>
                 )}
-                <circle
-                  cx={s.x}
-                  cy={s.y}
-                  r={r}
-                  fill={color}
-                  filter={hasOnline ? "url(#dotGlow)" : undefined}
-                />
+                {total > 0 && (
+                  <circle cx={s.lx} cy={s.ly} r={total > 0 ? 4 : 2} fill={color} />
+                )}
                 <text
-                  x={s.x}
-                  y={s.y - r - 3}
+                  x={s.lx}
+                  y={s.ly - 7}
                   textAnchor="middle"
-                  fontSize={hasAgent ? 9 : 8}
+                  fontSize={10}
                   fontFamily="var(--font-mono)"
-                  fill={hasAgent ? "var(--foreground)" : "var(--muted-foreground)"}
-                  opacity={labelOpacity}
+                  fill={total > 0 ? "var(--foreground)" : "var(--muted-foreground)"}
+                  opacity={total > 0 ? 1 : 0.7}
+                  style={{ paintOrder: "stroke", stroke: "var(--background)", strokeWidth: 3 }}
                 >
                   {s.uf}
                 </text>
-                {hasAgent && (
-                  <text
-                    x={s.x}
-                    y={s.y + r + 9}
-                    textAnchor="middle"
-                    fontSize="8"
-                    fontFamily="var(--font-mono)"
-                    fill={color}
-                  >
-                    {info!.online}/{info!.total}
-                  </text>
-                )}
-                <title>
-                  {s.name} ({s.uf}) — {info ? `${info.online}/${info.total} online` : "sem agente"}
-                </title>
               </g>
             );
           })}
         </svg>
+
+        {/* Tooltip flutuante */}
+        {hover && (
+          <div
+            className="pointer-events-none absolute z-10 min-w-[180px] rounded-md border border-border bg-popover/95 backdrop-blur-md shadow-lg p-3 text-xs"
+            style={{
+              left: Math.min(hover.x + 14, 520),
+              top: Math.max(hover.y - 8, 4),
+            }}
+          >
+            <div className="font-semibold text-foreground flex items-center gap-1.5">
+              <MapPin className="h-3 w-3 text-primary" />
+              {UF_NAME[hover.uf] ?? hover.uf} <span className="text-muted-foreground font-mono">({hover.uf})</span>
+            </div>
+            {hoveredBucket ? (
+              <div className="mt-2 space-y-1 font-mono">
+                <div className="flex justify-between gap-6">
+                  <span className="text-success">● online</span>
+                  <span className="text-foreground font-semibold">{hoveredBucket.online.length}</span>
+                </div>
+                <div className="flex justify-between gap-6">
+                  <span className="text-warning">● stale</span>
+                  <span className="text-foreground font-semibold">{hoveredBucket.stale.length}</span>
+                </div>
+                <div className="flex justify-between gap-6">
+                  <span className="text-muted-foreground">● offline</span>
+                  <span className="text-foreground font-semibold">{hoveredBucket.offline.length}</span>
+                </div>
+                <div className="pt-1 mt-1 border-t border-border/60 flex justify-between gap-6">
+                  <span className="text-muted-foreground">total</span>
+                  <span className="text-foreground font-semibold">{hoveredBucket.all.length}</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground pt-1">Clique para detalhes</p>
+              </div>
+            ) : (
+              <div className="mt-1 text-muted-foreground">Sem agentes nesta UF</div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
@@ -246,6 +274,80 @@ export function BrazilAgentsMap({ agents, loading }: { agents: Agent[]; loading:
           </span>
         )}
       </div>
+
+      {/* Painel lateral com agentes da UF selecionada */}
+      <Sheet open={!!selectedUf} onOpenChange={(v) => !v && setSelectedUf(null)}>
+        <SheetContent className="w-full sm:max-w-md p-0 flex flex-col">
+          <SheetHeader className="p-5 pb-3 border-b border-border">
+            <SheetTitle className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-primary" />
+              {selectedUf ? `${UF_NAME[selectedUf] ?? selectedUf} (${selectedUf})` : ""}
+            </SheetTitle>
+            <SheetDescription>
+              {selectedBucket
+                ? `${selectedBucket.all.length} agente(s) · ${selectedBucket.online.length} online · ${selectedBucket.stale.length} stale · ${selectedBucket.offline.length} offline`
+                : "Sem agentes registrados nesta UF."}
+            </SheetDescription>
+          </SheetHeader>
+
+          <ScrollArea className="flex-1">
+            <div className="p-4 space-y-2">
+              {(selectedBucket?.all ?? []).length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  Nenhum agente registrado.
+                </p>
+              )}
+              {(selectedBucket?.all ?? [])
+                .slice()
+                .sort((a, b) => {
+                  const rank = (x: Agent) => classify(x, now) === "online" ? 0 : classify(x, now) === "stale" ? 1 : 2;
+                  return rank(a) - rank(b);
+                })
+                .map((a) => {
+                  const st = classify(a, now);
+                  const tone = st === "online" ? "success" : st === "stale" ? "warning" : "muted";
+                  const dot = st === "online" ? "bg-success" : st === "stale" ? "bg-warning" : "bg-muted-foreground/60";
+                  return (
+                    <div key={a.id} className="rounded-md border border-border bg-card/60 p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="font-medium text-sm truncate flex items-center gap-2">
+                            <span className={`inline-block h-2 w-2 rounded-full ${dot} ${st === "online" ? "shadow-[0_0_6px_var(--success)]" : ""}`} />
+                            {a.alias ?? a.agent_uid ?? a.id.slice(0, 8)}
+                          </div>
+                          <div className="mt-1 text-[11px] font-mono text-muted-foreground flex items-center gap-1.5 truncate">
+                            <DatabaseIcon className="h-3 w-3" />
+                            {a.databases?.name ?? "—"}
+                          </div>
+                          {a.databases?.companies?.name && (
+                            <div className="text-[11px] font-mono text-muted-foreground flex items-center gap-1.5 truncate">
+                              <Building2 className="h-3 w-3" />
+                              {a.databases.companies.name}
+                            </div>
+                          )}
+                        </div>
+                        <Badge variant={tone as any} className="shrink-0 uppercase text-[10px]">
+                          {st}
+                        </Badge>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground">
+                        <span className="inline-flex items-center gap-1">
+                          <Circle className="h-2.5 w-2.5" />
+                          {a.agent_uid ?? a.id.slice(0, 12)}
+                        </span>
+                        <span>
+                          {a.last_heartbeat_at
+                            ? `heartbeat ${formatRelative(a.last_heartbeat_at)}`
+                            : "sem heartbeat"}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
     </Card>
   );
 }
