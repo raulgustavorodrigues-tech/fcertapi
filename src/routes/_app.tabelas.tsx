@@ -180,11 +180,31 @@ function Page() {
     if (!databaseId) return;
     setLoading(true);
     setWaitElapsed(0);
+    setLoadStage("enqueue");
     const startTs = Date.now();
-    const tick = setInterval(() => setWaitElapsed(Math.floor((Date.now() - startTs) / 1000)), 250);
+    const tick = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTs) / 1000);
+      setWaitElapsed(elapsed);
+      // Heurística de estágio quando o agente ainda não atualizou o status
+      setLoadStage((prev) => {
+        if (prev === "finalizing") return prev;
+        if (elapsed >= 8 && prev === "delivered") return "scanning";
+        return prev;
+      });
+    }, 250);
     try {
       const { command_id } = await enqueueCommand(databaseId, "list_tables", {});
-      const row = await awaitCommandResult(command_id, { timeoutMs: 120_000, intervalMs: 1500 });
+      const row = await awaitCommandResult(command_id, {
+        timeoutMs: 120_000,
+        intervalMs: 1500,
+        onUpdate: (r) => {
+          if (r?.status === "processing") setLoadStage("scanning");
+          else if (r?.status === "pending") {
+            setLoadStage((prev) => (prev === "enqueue" ? "delivered" : prev));
+          }
+        },
+      });
+      setLoadStage("finalizing");
       clearInterval(tick);
       if (row.status === "success" && row.result?.tables) {
         const tablesData = row.result.tables;
@@ -206,6 +226,15 @@ function Page() {
       setLoading(false);
     }
   }
+
+  const STAGES: Array<{ key: typeof loadStage; label: string; hint: string }> = [
+    { key: "enqueue", label: "Enfileirando comando", hint: "Registrando pedido no hub" },
+    { key: "delivered", label: "Aguardando agente", hint: "Heartbeat entrega o comando ao serviço local" },
+    { key: "scanning", label: "Varrendo tabelas", hint: "Agente lê metadados do Firebird (pode levar até 2min)" },
+    { key: "finalizing", label: "Finalizando", hint: "Salvando cache do schema" },
+  ];
+  const stageIndex = STAGES.findIndex((s) => s.key === loadStage);
+
 
   const cacheAge = cacheRow?.cached_at
     ? Math.floor((Date.now() - new Date(cacheRow.cached_at).getTime()) / 60000)
