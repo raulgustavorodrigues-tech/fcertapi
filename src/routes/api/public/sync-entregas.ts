@@ -12,13 +12,28 @@ function err(s: number, code: string, m: string) {
   return Response.json({ success: false, error: { code, message: m } }, { status: s, headers: CORS });
 }
 
+// Campos numéricos do ERP podem vir como número OU string (CHAR/VARCHAR no
+// Firebird). Este helper normaliza os dois casos e trata vazio como null.
+const numish = z.preprocess((v) => {
+  if (v === null || v === undefined || v === "") return null;
+  if (typeof v === "number") return v;
+  const n = Number(String(v).trim());
+  return Number.isFinite(n) ? n : null;
+}, z.number().nullable());
+
+const numishRequired = z.preprocess((v) => {
+  if (typeof v === "number") return v;
+  const n = Number(String(v ?? "").trim());
+  return Number.isFinite(n) ? n : undefined;
+}, z.number().int());
+
 const rowSchema = z.object({
-  cdfilentg: z.number().int(),
-  nrentg: z.number().int(),
+  cdfilentg: numishRequired,
+  nrentg: numishRequired,
   dtentg: z.string().nullable().optional(),
-  cdreg: z.number().int().nullable().optional(),
-  periodo: z.number().int().nullable().optional(),
-  cdclides: z.number().int().nullable().optional(),
+  cdreg: numish.optional(),
+  periodo: numish.optional(),
+  cdclides: numish.optional(),
   nomecli: z.string().nullable().optional(),
   nrtel: z.string().nullable().optional(),
   nrcep: z.string().nullable().optional(),
@@ -28,8 +43,8 @@ const rowSchema = z.object({
   bairr: z.string().nullable().optional(),
   munic: z.string().nullable().optional(),
   unfed: z.string().nullable().optional(),
-  cdfilentgdes: z.number().int().nullable().optional(),
-  qtform: z.number().int().nullable().optional(),
+  cdfilentgdes: numish.optional(),
+  qtform: numish.optional(),
   flagentg: z.string().nullable().optional(),
   obsentg: z.string().nullable().optional(),
 }).passthrough();
