@@ -169,6 +169,7 @@ function BancosPage() {
               key={db.id}
               db={db}
               onSync={() => syncNow(db)}
+              onForceUpdate={() => forceUpdate(db)}
               onEdit={() => { setEditing(db); setOpen(true); }}
               onDelete={() => {
                 if (confirm("Remover este banco? Esta ação não pode ser desfeita.")) remove.mutate(db.id);
