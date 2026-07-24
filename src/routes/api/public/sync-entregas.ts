@@ -67,7 +67,11 @@ export const Route = createFileRoute("/api/public/sync-entregas")({
         let body: unknown;
         try { body = JSON.parse(raw); } catch { return err(400, "INVALID_JSON", "Body inválido"); }
         const parsed = payloadSchema.safeParse(body);
-        if (!parsed.success) return err(422, "VALIDATION_ERROR", parsed.error.errors[0]?.message ?? "inválido");
+        if (!parsed.success) {
+          const e0 = parsed.error.errors[0];
+          return err(422, "VALIDATION_ERROR",
+            `${e0?.path?.join(".") ?? "?"}: ${e0?.message ?? "inválido"}`);
+        }
         const data = parsed.data;
 
         const { data: db } = await supabaseAdmin
