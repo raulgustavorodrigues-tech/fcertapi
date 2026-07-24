@@ -119,6 +119,8 @@ function BancosPage() {
     }));
     if (fail === 0) toast.success(`Comando enfileirado em ${ok} agente(s).`);
     else toast.warning(`${ok} enfileirado(s), ${fail} falha(s).`);
+  }
+
 
   return (
     <div className="space-y-5">
