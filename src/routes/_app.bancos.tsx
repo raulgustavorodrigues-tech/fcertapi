@@ -240,10 +240,11 @@ function StepIcon({ status }: { status: StepStatus }) {
 }
 
 function DatabaseCard({
-  db, onSync, onEdit, onDelete, onRefresh,
+  db, onSync, onForceUpdate, onEdit, onDelete, onRefresh,
 }: {
   db: any;
   onSync: () => void;
+  onForceUpdate: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onRefresh: () => void;
