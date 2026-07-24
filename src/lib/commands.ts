@@ -11,7 +11,8 @@ export type CommandType =
   | "list_tables"
   | "run_query"
   | "force_sync"
-  | "network_test";
+  | "network_test"
+  | "check_update";
 
 export type PendingCommand = {
   command_id: string;

@@ -88,6 +88,40 @@ function BancosPage() {
     qc.invalidateQueries({ queryKey: ["dashboard"] });
   }
 
+  async function forceUpdate(db: any) {
+    toast.info(`Solicitando atualização em ${db.name}…`);
+    try {
+      const { enqueueCommand, awaitCommandResult } = await import("@/lib/commands");
+      const { command_id } = await enqueueCommand(db.id, "check_update", {});
+      const row = await awaitCommandResult(command_id, { timeoutMs: 60_000, intervalMs: 2_500 });
+      if (row.status === "success") {
+        toast.success(`${db.name}: verificação disparada. Se houver versão nova, o serviço será reiniciado em segundos.`);
+      } else {
+        toast.error(`${db.name}: ${row.error_message ?? "falha ao checar atualização"}`);
+      }
+    } catch (e: any) {
+      toast.error(`${db.name}: ${e?.message ?? "agente não respondeu"}. Agentes < 1.5.4 ignoram este comando; aguarde o auto-update (ciclo ~1h) ou reinstale.`);
+    }
+    qc.invalidateQueries({ queryKey: ["databases"] });
+  }
+
+  async function updateFleet() {
+    const online = databases.filter((d: any) => d.agents?.[0]?.status === "online" || d.agents?.status === "online");
+    const targets = online.length > 0 ? online : databases;
+    if (targets.length === 0) { toast.info("Nenhum banco para atualizar"); return; }
+    if (!confirm(`Disparar atualização em ${targets.length} agente(s) agora?`)) return;
+    toast.info(`Enviando check_update para ${targets.length} agente(s)…`);
+    const { enqueueCommand } = await import("@/lib/commands");
+    let ok = 0, fail = 0;
+    await Promise.all(targets.map(async (db: any) => {
+      try { await enqueueCommand(db.id, "check_update", {}); ok++; }
+      catch { fail++; }
+    }));
+    if (fail === 0) toast.success(`Comando enfileirado em ${ok} agente(s).`);
+    else toast.warning(`${ok} enfileirado(s), ${fail} falha(s).`);
+  }
+
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-3">
@@ -100,6 +134,9 @@ function BancosPage() {
         </Select>
         <Badge variant="muted">{databases.length} banco(s) cadastrado(s)</Badge>
         <div className="flex-1" />
+        <Button variant="outline" onClick={updateFleet} title="Envia check_update para todos os agentes (força auto-update para 1.5.3+)">
+          <Download className="h-4 w-4 mr-1.5" /> Atualizar todos os agentes
+        </Button>
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
           <DialogTrigger asChild>
             <Button onClick={() => setEditing(null)}><Plus className="h-4 w-4 mr-1.5" /> Novo Banco</Button>
@@ -132,6 +169,7 @@ function BancosPage() {
               key={db.id}
               db={db}
               onSync={() => syncNow(db)}
+              onForceUpdate={() => forceUpdate(db)}
               onEdit={() => { setEditing(db); setOpen(true); }}
               onDelete={() => {
                 if (confirm("Remover este banco? Esta ação não pode ser desfeita.")) remove.mutate(db.id);
@@ -202,10 +240,11 @@ function StepIcon({ status }: { status: StepStatus }) {
 }
 
 function DatabaseCard({
-  db, onSync, onEdit, onDelete, onRefresh,
+  db, onSync, onForceUpdate, onEdit, onDelete, onRefresh,
 }: {
   db: any;
   onSync: () => void;
+  onForceUpdate: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onRefresh: () => void;
@@ -579,6 +618,16 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
               </div>
               <div className="text-[11px] text-muted-foreground pl-5">
                 Passo-a-passo impresso específico deste banco, com token e endpoints. Para o técnico levar em campo.
+              </div>
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onForceUpdate} className="flex-col items-start gap-0.5 py-2">
+              <div className="flex items-center gap-2 font-medium">
+                <Download className="h-3.5 w-3.5" /> Atualizar agente agora
+              </div>
+              <div className="text-[11px] text-muted-foreground pl-5">
+                Envia <b>check_update</b> ao agente. Ele consulta <code>/agent-version</code>, baixa o instalador e reinicia o serviço se houver versão nova. Requer agente ≥ 1.5.4.
               </div>
             </DropdownMenuItem>
 
