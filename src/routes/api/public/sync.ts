@@ -19,7 +19,7 @@ const tableSchema = z.object({
     .number({ invalid_type_error: "record_count deve ser numérico" })
     .int("record_count deve ser inteiro")
     .min(0, "record_count não pode ser negativo")
-    .max(1_000_000, "record_count excede o limite (1.000.000)")
+    .max(999_999_999, "record_count excede o limite (999.999.999)")
     .optional(),
   checksum: z.string().max(256).optional(),
   records: z
