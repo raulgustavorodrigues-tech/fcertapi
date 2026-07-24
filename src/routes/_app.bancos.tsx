@@ -622,7 +622,6 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
             </DropdownMenuItem>
 
             <DropdownMenuSeparator />
-            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onForceUpdate} className="flex-col items-start gap-0.5 py-2">
               <div className="flex items-center gap-2 font-medium">
                 <Download className="h-3.5 w-3.5" /> Atualizar agente agora
