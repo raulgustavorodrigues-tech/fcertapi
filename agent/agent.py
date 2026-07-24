@@ -919,8 +919,8 @@ def handle_command(cmd: Dict[str, Any]) -> None:
         elif ctype == "run_query":    res = cmd_run_query(payload)
         elif ctype == "network_test": res = cmd_network_test(payload)
         elif ctype == "force_sync":
-            do_sync()
             do_sync_entregas()
+            do_sync()
             res = {"synced": True, "at": datetime.now(timezone.utc).isoformat()}
         elif ctype == "sync_entregas":
             do_sync_entregas()
