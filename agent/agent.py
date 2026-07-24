@@ -1064,8 +1064,10 @@ def run_loop(stop_check=lambda: _STOP) -> None:
                 try: heartbeat()
                 except Exception: pass
             if time.time() - last_sync >= CFG["sync_interval"]:
-                do_sync()
-                do_sync_entregas()
+                try: do_sync_entregas()
+                except Exception as e: log.error("sync-entregas erro: %s", e)
+                try: do_sync()
+                except Exception as e: log.error("sync erro: %s", e)
                 last_sync = time.time()
             fails = 0
         except Exception as e:
