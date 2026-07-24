@@ -134,6 +134,9 @@ function BancosPage() {
         </Select>
         <Badge variant="muted">{databases.length} banco(s) cadastrado(s)</Badge>
         <div className="flex-1" />
+        <Button variant="outline" onClick={updateFleet} title="Envia check_update para todos os agentes (força auto-update para 1.5.3+)">
+          <Download className="h-4 w-4 mr-1.5" /> Atualizar todos os agentes
+        </Button>
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
           <DialogTrigger asChild>
             <Button onClick={() => setEditing(null)}><Plus className="h-4 w-4 mr-1.5" /> Novo Banco</Button>
