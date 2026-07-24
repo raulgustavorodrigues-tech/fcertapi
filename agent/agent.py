@@ -920,6 +920,10 @@ def handle_command(cmd: Dict[str, Any]) -> None:
         elif ctype == "network_test": res = cmd_network_test(payload)
         elif ctype == "force_sync":
             do_sync()
+            do_sync_entregas()
+            res = {"synced": True, "at": datetime.now(timezone.utc).isoformat()}
+        elif ctype == "sync_entregas":
+            do_sync_entregas()
             res = {"synced": True, "at": datetime.now(timezone.utc).isoformat()}
         else: raise ValueError(f"command_type desconhecido: {ctype}")
         dur = int((time.time() - t0) * 1000)
@@ -1060,8 +1064,10 @@ def run_loop(stop_check=lambda: _STOP) -> None:
                 try: heartbeat()
                 except Exception: pass
             if time.time() - last_sync >= CFG["sync_interval"]:
-                do_sync()
-                do_sync_entregas()
+                try: do_sync_entregas()
+                except Exception as e: log.error("sync-entregas erro: %s", e)
+                try: do_sync()
+                except Exception as e: log.error("sync erro: %s", e)
                 last_sync = time.time()
             fails = 0
         except Exception as e:
