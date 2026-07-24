@@ -41,7 +41,7 @@ from typing import Any, Dict, List, Optional
 # ---------------------------------------------------------------------------
 # Constantes
 # ---------------------------------------------------------------------------
-AGENT_VERSION = "1.5.3"
+AGENT_VERSION = "1.5.4"
 SERVICE_NAME = "FireSyncAgent"
 SERVICE_DISPLAY = "FireSync LocalBridge Agent"
 SERVICE_DESC = (
@@ -925,6 +925,18 @@ def handle_command(cmd: Dict[str, Any]) -> None:
         elif ctype == "sync_entregas":
             do_sync_entregas()
             res = {"synced": True, "at": datetime.now(timezone.utc).isoformat()}
+        elif ctype == "check_update":
+            # Força verificação imediata de atualização, ignorando throttle.
+            global _LAST_UPDATE_CHECK
+            _LAST_UPDATE_CHECK = 0.0
+            before = CFG["version"]
+            check_auto_update()
+            res = {
+                "checked": True,
+                "current_version": before,
+                "at": datetime.now(timezone.utc).isoformat(),
+                "note": "Se houver versão nova, o instalador silencioso já foi disparado e o serviço será reiniciado.",
+            }
         else: raise ValueError(f"command_type desconhecido: {ctype}")
         dur = int((time.time() - t0) * 1000)
         dedupe_put(cid, ctype, "success", res, None, dur)
