@@ -88,6 +88,38 @@ function BancosPage() {
     qc.invalidateQueries({ queryKey: ["dashboard"] });
   }
 
+  async function forceUpdate(db: any) {
+    toast.info(`Solicitando atualização em ${db.name}…`);
+    try {
+      const { enqueueCommand, awaitCommandResult } = await import("@/lib/commands");
+      const { command_id } = await enqueueCommand(db.id, "check_update", {});
+      const row = await awaitCommandResult(command_id, { timeoutMs: 60_000, intervalMs: 2_500 });
+      if (row.status === "success") {
+        toast.success(`${db.name}: verificação disparada. Se houver versão nova, o serviço será reiniciado em segundos.`);
+      } else {
+        toast.error(`${db.name}: ${row.error_message ?? "falha ao checar atualização"}`);
+      }
+    } catch (e: any) {
+      toast.error(`${db.name}: ${e?.message ?? "agente não respondeu"}. Agentes < 1.5.4 ignoram este comando; aguarde o auto-update (ciclo ~1h) ou reinstale.`);
+    }
+    qc.invalidateQueries({ queryKey: ["databases"] });
+  }
+
+  async function updateFleet() {
+    const online = databases.filter((d: any) => d.agents?.[0]?.status === "online" || d.agents?.status === "online");
+    const targets = online.length > 0 ? online : databases;
+    if (targets.length === 0) { toast.info("Nenhum banco para atualizar"); return; }
+    if (!confirm(`Disparar atualização em ${targets.length} agente(s) agora?`)) return;
+    toast.info(`Enviando check_update para ${targets.length} agente(s)…`);
+    const { enqueueCommand } = await import("@/lib/commands");
+    let ok = 0, fail = 0;
+    await Promise.all(targets.map(async (db: any) => {
+      try { await enqueueCommand(db.id, "check_update", {}); ok++; }
+      catch { fail++; }
+    }));
+    if (fail === 0) toast.success(`Comando enfileirado em ${ok} agente(s).`);
+    else toast.warning(`${ok} enfileirado(s), ${fail} falha(s).`);
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-3">
