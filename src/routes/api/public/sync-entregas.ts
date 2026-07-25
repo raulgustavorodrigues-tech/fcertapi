@@ -38,6 +38,7 @@ const rowSchema = z.object({
   nrtel: z.string().nullable().optional(),
   nrcep: z.string().nullable().optional(),
   endrf: z.string().nullable().optional(),
+  ender: z.string().nullable().optional(),
   endnr: z.string().nullable().optional(),
   endcp: z.string().nullable().optional(),
   bairr: z.string().nullable().optional(),
