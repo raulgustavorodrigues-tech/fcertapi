@@ -1,0 +1,1 @@
+ALTER TABLE public.entregas_sync ADD COLUMN IF NOT EXISTS ender text;

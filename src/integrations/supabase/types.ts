@@ -432,6 +432,7 @@ export type Database = {
           database_id: string
           dtentg: string | null
           endcp: string | null
+          ender: string | null
           endnr: string | null
           endrf: string | null
           flagentg: string | null
@@ -458,6 +459,7 @@ export type Database = {
           database_id: string
           dtentg?: string | null
           endcp?: string | null
+          ender?: string | null
           endnr?: string | null
           endrf?: string | null
           flagentg?: string | null
@@ -484,6 +486,7 @@ export type Database = {
           database_id?: string
           dtentg?: string | null
           endcp?: string | null
+          ender?: string | null
           endnr?: string | null
           endrf?: string | null
           flagentg?: string | null
