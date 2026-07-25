@@ -47,6 +47,9 @@ const rowSchema = z.object({
   qtform: numish.optional(),
   flagentg: z.string().nullable().optional(),
   obsentg: z.string().nullable().optional(),
+  vrrcb: numish.optional(),
+  vrtot: numish.optional(),
+  vrtxa: numish.optional(),
 }).passthrough();
 
 const payloadSchema = z.object({
