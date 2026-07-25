@@ -475,6 +475,41 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
     return { label: "Push only", variant: "muted" as const };
   })();
 
+  const { data: latestInfo } = useQuery({
+    queryKey: ["agent-latest-version"],
+    queryFn: async () => {
+      const r = await fetch("/api/public/agent-version");
+      if (!r.ok) throw new Error("failed");
+      return r.json() as Promise<{ version: string }>;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const agentVersion: string | null = agent?.agent_version ?? null;
+  const latestVersion: string | null = latestInfo?.version ?? null;
+  const versionInfo = (() => {
+    if (!agentVersion) {
+      return { label: "sem versão", variant: "muted" as const, tip: "Agente ainda não reportou versão. Instale ou atualize para começar a receber heartbeats." };
+    }
+    const cmp = (a: string, b: string) => {
+      const pa = a.split(".").map((n) => parseInt(n, 10) || 0);
+      const pb = b.split(".").map((n) => parseInt(n, 10) || 0);
+      for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+        const d = (pa[i] ?? 0) - (pb[i] ?? 0);
+        if (d !== 0) return d;
+      }
+      return 0;
+    };
+    if (!latestVersion) {
+      return { label: `v${agentVersion}`, variant: "muted" as const, tip: `Versão em execução: ${agentVersion}` };
+    }
+    const diff = cmp(agentVersion, latestVersion);
+    if (diff >= 0) {
+      return { label: `v${agentVersion} · atualizado`, variant: "success" as const, tip: `Agente na versão mais recente (${latestVersion}).` };
+    }
+    return { label: `v${agentVersion} → v${latestVersion}`, variant: "destructive" as const, tip: `Atualização disponível: agente em ${agentVersion}, versão atual ${latestVersion}. Use "Atualizar agente agora" no menu Avançado.` };
+  })();
+
   return (
     <Card className="p-5 bg-card border-border hover:border-primary/40 transition-colors">
       <div className="flex items-start justify-between mb-3">
@@ -483,6 +518,14 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
           <div className="flex gap-1.5 mt-1.5 flex-wrap">
             <Badge variant="info">{db.companies?.name ?? "—"}</Badge>
             <Badge variant={connMode.variant}>{connMode.label}</Badge>
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant={versionInfo.variant} className="cursor-help font-mono">{versionInfo.label}</Badge>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs text-xs">{versionInfo.tip}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
         <StatusBadge status={db.status} />
