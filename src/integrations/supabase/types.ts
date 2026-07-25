@@ -445,6 +445,9 @@ export type Database = {
           qtform: number | null
           synced_at: string
           unfed: string | null
+          vrrcb: number | null
+          vrtot: number | null
+          vrtxa: number | null
         }
         Insert: {
           bairr?: string | null
@@ -468,6 +471,9 @@ export type Database = {
           qtform?: number | null
           synced_at?: string
           unfed?: string | null
+          vrrcb?: number | null
+          vrtot?: number | null
+          vrtxa?: number | null
         }
         Update: {
           bairr?: string | null
@@ -491,6 +497,9 @@ export type Database = {
           qtform?: number | null
           synced_at?: string
           unfed?: string | null
+          vrrcb?: number | null
+          vrtot?: number | null
+          vrtxa?: number | null
         }
         Relationships: [
           {
