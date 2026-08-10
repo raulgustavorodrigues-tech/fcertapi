@@ -60,7 +60,7 @@ const rowSchema = z.object({
   vrrcb: numish.optional(),
   vrtot: numish.optional(),
   vrtxa: numish.optional(),
-  cdpro: numish.optional(),
+  cdpro: stringish.optional(),
 }).passthrough();
 
 const payloadSchema = z.object({
