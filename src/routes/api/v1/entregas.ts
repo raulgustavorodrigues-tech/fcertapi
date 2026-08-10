@@ -63,7 +63,7 @@ export const Route = createFileRoute("/api/v1/entregas")({
         let q = supabaseAdmin
           .from("entregas_sync")
           .select(
-            "cdfilentg, nrentg, dtentg, cdreg, periodo, cdclides, nomecli, nrtel, nrcep, endrf, ender, endnr, endcp, bairr, munic, unfed, cdfilentgdes, qtform, flagentg, obsentg, vrrcb, vrtot, vrtxa, synced_at",
+            "cdfilentg, nrentg, dtentg, cdreg, periodo, cdclides, nomecli, nrtel, nrcep, endrf, ender, endnr, endcp, bairr, munic, unfed, cdfilentgdes, qtform, flagentg, obsentg, vrrcb, vrtot, vrtxa, cdpro, synced_at",
             { count: "exact" },
           )
           .gte("dtentg", dataInicio)

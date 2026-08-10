@@ -428,6 +428,7 @@ export type Database = {
           cdclides: number | null
           cdfilentg: number
           cdfilentgdes: number | null
+          cdpro: number | null
           cdreg: number | null
           database_id: string
           dtentg: string | null
@@ -455,6 +456,7 @@ export type Database = {
           cdclides?: number | null
           cdfilentg: number
           cdfilentgdes?: number | null
+          cdpro?: number | null
           cdreg?: number | null
           database_id: string
           dtentg?: string | null
@@ -482,6 +484,7 @@ export type Database = {
           cdclides?: number | null
           cdfilentg?: number
           cdfilentgdes?: number | null
+          cdpro?: number | null
           cdreg?: number | null
           database_id?: string
           dtentg?: string | null
