@@ -14,12 +14,21 @@ function err(s: number, code: string, m: string) {
 
 // Campos numéricos do ERP podem vir como número OU string (CHAR/VARCHAR no
 // Firebird). Este helper normaliza os dois casos e trata vazio como null.
+// Nota: Use numish para valores que DEVEM ser números no banco.
+// Para campos que aceitam texto no banco, use z.string().preprocess(...) ou similar.
 const numish = z.preprocess((v) => {
   if (v === null || v === undefined || v === "") return null;
   if (typeof v === "number") return v;
   const n = Number(String(v).trim());
   return Number.isFinite(n) ? n : null;
 }, z.number().nullable());
+
+// Helper para converter qualquer entrada em string limpa ou null
+const stringish = z.preprocess((v) => {
+  if (v === null || v === undefined || v === "") return null;
+  return String(v).trim();
+}, z.string().nullable());
+
 
 const numishRequired = z.preprocess((v) => {
   if (typeof v === "number") return v;
@@ -51,7 +60,7 @@ const rowSchema = z.object({
   vrrcb: numish.optional(),
   vrtot: numish.optional(),
   vrtxa: numish.optional(),
-  cdpro: numish.optional(),
+  cdpro: stringish.optional(),
 }).passthrough();
 
 const payloadSchema = z.object({
