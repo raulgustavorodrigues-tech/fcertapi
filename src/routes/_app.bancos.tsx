@@ -480,13 +480,14 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
     queryFn: async () => {
       const r = await fetch("/api/public/agent-version");
       if (!r.ok) throw new Error("failed");
-      return r.json() as Promise<{ version: string }>;
+      return r.json() as Promise<{ version: string; installer_url: string }>;
     },
     staleTime: 5 * 60 * 1000,
   });
 
   const agentVersion: string | null = agent?.agent_version ?? null;
   const latestVersion: string | null = latestInfo?.version ?? null;
+  const effectiveInstallerUrl: string | null = latestInfo?.installer_url ?? null;
   const versionInfo = (() => {
     if (!agentVersion) {
       return { label: "sem versão", variant: "muted" as const, tip: "Agente ainda não reportou versão. Instale ou atualize para começar a receber heartbeats." };
@@ -536,6 +537,32 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
         <Row label="Agente">{db.agent_uid ?? "—"}</Row>
         <Row label="Firebird">{db.firebird_version} · {db.charset}</Row>
         <Row label="Última sync">{formatRelative(db.last_sync_at)}</Row>
+        <Popover>
+          <PopoverTrigger asChild>
+            <div className="flex gap-2 cursor-help hover:text-primary transition-colors">
+              <dt className="text-muted-foreground/70 uppercase text-[10px] tracking-wider w-20 shrink-0 pt-0.5">Versão Hub</dt>
+              <dd className="truncate flex-1 flex items-center gap-1.5">
+                v{latestVersion ?? "..."}
+                <Eye className="h-3 w-3" />
+              </dd>
+            </div>
+          </PopoverTrigger>
+          <PopoverContent side="right" className="w-80 p-3 font-mono text-[10px] space-y-2">
+            <div className="font-bold border-b pb-1 mb-1">Inspeção de Versão (Hub)</div>
+            <div className="space-y-1">
+              <div className="text-muted-foreground">Versão Alvo:</div>
+              <div className="bg-muted p-1 rounded break-all">v{latestVersion ?? "Carregando..."}</div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-muted-foreground">URL do Instalador:</div>
+              <div className="bg-muted p-1 rounded break-all whitespace-pre-wrap">{effectiveInstallerUrl ?? "Carregando..."}</div>
+            </div>
+            <div className="text-[9px] text-muted-foreground leading-tight pt-1">
+              Estes valores são resolvidos no Hub priorizando <b>Secrets</b> (AGENT_LATEST_VERSION / AGENT_INSTALLER_URL) 
+              e usando fallbacks do código caso os secrets estejam vazios.
+            </div>
+          </PopoverContent>
+        </Popover>
       </dl>
       <div className="mb-4">
         <LatencyBar ms={latency} />
