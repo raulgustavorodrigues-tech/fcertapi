@@ -113,7 +113,6 @@ function DashboardPage() {
         companies: companies.count ?? 0,
         databases: databases.count ?? 0,
         syncs24h: totalSyncs24h,
-        entregasSyncs24h: entregasSyncs24h.count ?? 0,
         agentsOnline: agentsOnline.count ?? 0,
         lastSyncs: lastSyncs.data ?? [],
         agents: agents.data ?? [],
@@ -145,11 +144,10 @@ function DashboardPage() {
         errors24h={data?.errors24h?.length ?? 0}
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard icon={<Building2 className="h-5 w-5" />} label="Empresas" value={data?.companies} loading={isLoading} accent="primary" hint="cadastradas no hub" />
         <KpiCard icon={<DatabaseIcon className="h-5 w-5" />} label="Bancos conectados" value={data?.databases} loading={isLoading} accent="info" hint="Firebird gerenciados" />
         <KpiCard icon={<RefreshCw className="h-5 w-5" />} label="Syncs 24h" value={data?.syncs24h} loading={isLoading} accent="success" hint="execuções gerais 24h" />
-        <KpiCard icon={<Zap className="h-5 w-5" />} label="Entregas 24h" value={data?.entregasSyncs24h} loading={isLoading} accent="primary" hint="sincronizações logística" live />
         <KpiCard icon={<Activity className="h-5 w-5" />} label="Agentes online" value={data?.agentsOnline} loading={isLoading} accent="warning" hint="heartbeat < 60s" live />
       </div>
 
