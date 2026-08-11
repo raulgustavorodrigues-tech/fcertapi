@@ -907,10 +907,15 @@ function DatabaseDialog({
             </SelectContent>
           </Select>
         </div>
-        <div className="col-span-2 space-y-1.5">
+        <div className="space-y-1.5">
           <Label>ID do agente (Agent UID)</Label>
           <Input value={form.agent_uid} onChange={(e) => setForm({ ...form, agent_uid: e.target.value })} placeholder="pharmapele-duque-001" className="font-mono text-xs" />
         </div>
+        <div className="space-y-1.5">
+          <Label>Janela Entregas (dias)</Label>
+          <Input type="number" value={form.sync_entregas_window_days ?? 60} onChange={(e) => setForm({ ...form, sync_entregas_window_days: parseInt(e.target.value) || 60 })} />
+        </div>
+
         <div className="space-y-1.5">
           <Label>Intervalo de sync (segundos)</Label>
           <Input type="number" value={form.sync_interval} onChange={(e) => setForm({ ...form, sync_interval: parseInt(e.target.value) || 900 })} />
