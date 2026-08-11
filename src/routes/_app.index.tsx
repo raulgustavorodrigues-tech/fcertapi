@@ -82,6 +82,7 @@ function DashboardPage() {
       const [
         companies, databases, syncs24h, agentsOnline, lastSyncs, agents,
         syncs90d, syncs7h, allAgents, allDatabases, errors24h, syncs24hDetail,
+        entregasSyncs24h,
       ] = await Promise.all([
         supabase.from("companies").select("id", { count: "exact", head: true }),
         supabase.from("databases").select("id", { count: "exact", head: true }),
@@ -103,12 +104,16 @@ function DashboardPage() {
           .gte("started_at", since24h)
           .limit(50),
         supabase.from("sync_logs").select("started_at, status, records_count").gte("started_at", since24h),
+        supabase.from("entregas_sync_status").select("id", { count: "exact", head: true }).gte("last_sync_at", since24h),
       ]);
+
+      const totalSyncs24h = (syncs24h.count ?? 0) + (entregasSyncs24h.count ?? 0);
 
       return {
         companies: companies.count ?? 0,
         databases: databases.count ?? 0,
-        syncs24h: syncs24h.count ?? 0,
+        syncs24h: totalSyncs24h,
+        entregasSyncs24h: entregasSyncs24h.count ?? 0,
         agentsOnline: agentsOnline.count ?? 0,
         lastSyncs: lastSyncs.data ?? [],
         agents: agents.data ?? [],
@@ -140,10 +145,11 @@ function DashboardPage() {
         errors24h={data?.errors24h?.length ?? 0}
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <KpiCard icon={<Building2 className="h-5 w-5" />} label="Empresas" value={data?.companies} loading={isLoading} accent="primary" hint="cadastradas no hub" />
         <KpiCard icon={<DatabaseIcon className="h-5 w-5" />} label="Bancos conectados" value={data?.databases} loading={isLoading} accent="info" hint="Firebird gerenciados" />
-        <KpiCard icon={<RefreshCw className="h-5 w-5" />} label="Syncs 24h" value={data?.syncs24h} loading={isLoading} accent="success" hint="execuções nas últimas 24h" />
+        <KpiCard icon={<RefreshCw className="h-5 w-5" />} label="Syncs 24h" value={data?.syncs24h} loading={isLoading} accent="success" hint="execuções gerais 24h" />
+        <KpiCard icon={<Zap className="h-5 w-5" />} label="Entregas 24h" value={data?.entregasSyncs24h} loading={isLoading} accent="primary" hint="sincronizações logística" live />
         <KpiCard icon={<Activity className="h-5 w-5" />} label="Agentes online" value={data?.agentsOnline} loading={isLoading} accent="warning" hint="heartbeat < 60s" live />
       </div>
 
