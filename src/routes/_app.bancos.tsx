@@ -783,6 +783,8 @@ function DatabaseDialog({
     sync_interval: initial?.sync_interval ?? 900,
     sync_tables: initial?.sync_tables ?? "ALL",
     notes: initial?.notes ?? "",
+    sync_entregas_window_days: initial?.sync_entregas_window_days ?? 60,
+
   });
   const [showPwd, setShowPwd] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -805,12 +807,13 @@ function DatabaseDialog({
       let dbId: string | null = initial?.id ?? null;
 
       if (initial) {
-        const { error } = await supabase.from("databases").update(form).eq("id", initial.id);
+        const { error } = await supabase.from("databases").update(form as any).eq("id", initial.id);
         if (error) throw error;
         toast.success("Banco atualizado");
       } else {
         const { data: inserted, error } = await supabase
-          .from("databases").insert(form).select("id").single();
+          .from("databases").insert(form as any).select("id").single();
+
         if (error) throw error;
         dbId = inserted?.id ?? null;
         toast.success("Banco cadastrado. Use 'Testar' para validar a conexão.");
@@ -907,10 +910,15 @@ function DatabaseDialog({
             </SelectContent>
           </Select>
         </div>
-        <div className="col-span-2 space-y-1.5">
+        <div className="space-y-1.5">
           <Label>ID do agente (Agent UID)</Label>
           <Input value={form.agent_uid} onChange={(e) => setForm({ ...form, agent_uid: e.target.value })} placeholder="pharmapele-duque-001" className="font-mono text-xs" />
         </div>
+        <div className="space-y-1.5">
+          <Label>Janela Entregas (dias)</Label>
+          <Input type="number" value={form.sync_entregas_window_days ?? 60} onChange={(e) => setForm({ ...form, sync_entregas_window_days: parseInt(e.target.value) || 60 })} />
+        </div>
+
         <div className="space-y-1.5">
           <Label>Intervalo de sync (segundos)</Label>
           <Input type="number" value={form.sync_interval} onChange={(e) => setForm({ ...form, sync_interval: parseInt(e.target.value) || 900 })} />
