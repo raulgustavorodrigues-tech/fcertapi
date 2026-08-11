@@ -922,9 +922,9 @@ def handle_command(cmd: Dict[str, Any]) -> None:
             do_sync_entregas()
             do_sync()
             res = {"synced": True, "at": datetime.now(timezone.utc).isoformat()}
-        elif ctype == "sync_entregas":
+        elif ctype == "force_sync_entregas":
             do_sync_entregas()
-            res = {"synced": True, "at": datetime.now(timezone.utc).isoformat()}
+            res = {"synced": True, "window": SYNC_ENTREGAS_WINDOW_DAYS, "at": datetime.now(timezone.utc).isoformat()}
         elif ctype == "check_update":
             # Força verificação imediata de atualização, ignorando throttle.
             global _LAST_UPDATE_CHECK

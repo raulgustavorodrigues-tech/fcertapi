@@ -88,7 +88,26 @@ function BancosPage() {
     qc.invalidateQueries({ queryKey: ["dashboard"] });
   }
 
+  async function syncEntregas(db: any) {
+    toast.info(`Solicitando sync de Entregas (60 dias) em ${db.name}…`);
+    try {
+      const { enqueueCommand, awaitCommandResult } = await import("@/lib/commands");
+      const { command_id } = await enqueueCommand(db.id, "force_sync_entregas", {});
+      const row = await awaitCommandResult(command_id, { timeoutMs: 90_000, intervalMs: 2_500 });
+      if (row.status === "success") {
+        toast.success(`${db.name}: sync de entregas concluído pelo agente`);
+      } else {
+        toast.error(`${db.name}: ${row.error_message ?? "falha no sync de entregas"}`);
+      }
+    } catch (e: any) {
+      toast.error(`${db.name}: ${e?.message ?? "agente não respondeu"}`);
+    }
+    qc.invalidateQueries({ queryKey: ["databases"] });
+    qc.invalidateQueries({ queryKey: ["dashboard"] });
+  }
+
   async function forceUpdate(db: any) {
+
     toast.info(`Solicitando atualização em ${db.name}…`);
     try {
       const { enqueueCommand, awaitCommandResult } = await import("@/lib/commands");
@@ -169,6 +188,8 @@ function BancosPage() {
               key={db.id}
               db={db}
               onSync={() => syncNow(db)}
+              onSyncEntregas={() => syncEntregas(db)}
+
               onForceUpdate={() => forceUpdate(db)}
               onEdit={() => { setEditing(db); setOpen(true); }}
               onDelete={() => {
@@ -240,10 +261,12 @@ function StepIcon({ status }: { status: StepStatus }) {
 }
 
 function DatabaseCard({
-  db, onSync, onForceUpdate, onEdit, onDelete, onRefresh,
+  db, onSync, onSyncEntregas, onForceUpdate, onEdit, onDelete, onRefresh,
 }: {
   db: any;
   onSync: () => void;
+  onSyncEntregas: () => void;
+
   onForceUpdate: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -627,6 +650,18 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
             Dispara <b>force_sync</b> imediato no agente. Ele lê as tabelas configuradas e envia para o Hub sem esperar o intervalo agendado.
           </TooltipContent>
         </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button size="sm" variant="outline" onClick={onSyncEntregas}>
+              <RefreshCw className="h-3.5 w-3.5 mr-1 text-primary" /> Entregas 60d
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-xs">
+            Força a sincronização imediata do módulo de <b>Entregas</b> usando a nova janela de 60 dias.
+          </TooltipContent>
+        </Tooltip>
+
 
         <Tooltip>
           <TooltipTrigger asChild>
