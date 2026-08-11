@@ -783,6 +783,8 @@ function DatabaseDialog({
     sync_interval: initial?.sync_interval ?? 900,
     sync_tables: initial?.sync_tables ?? "ALL",
     notes: initial?.notes ?? "",
+    sync_entregas_window_days: initial?.sync_entregas_window_days ?? 60,
+
   });
   const [showPwd, setShowPwd] = useState(false);
   const [saving, setSaving] = useState(false);
