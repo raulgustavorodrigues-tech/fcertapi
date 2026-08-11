@@ -366,6 +366,7 @@ export type Database = {
           password_encrypted: string | null
           port: number | null
           status: string | null
+          sync_entregas_window_days: number | null
           sync_interval: number | null
           sync_tables: string | null
           username: string | null
@@ -387,6 +388,7 @@ export type Database = {
           password_encrypted?: string | null
           port?: number | null
           status?: string | null
+          sync_entregas_window_days?: number | null
           sync_interval?: number | null
           sync_tables?: string | null
           username?: string | null
@@ -408,6 +410,7 @@ export type Database = {
           password_encrypted?: string | null
           port?: number | null
           status?: string | null
+          sync_entregas_window_days?: number | null
           sync_interval?: number | null
           sync_tables?: string | null
           username?: string | null
