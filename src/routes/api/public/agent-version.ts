@@ -6,7 +6,7 @@ import { createFileRoute } from "@tanstack/react-router";
 //
 // Values can be overridden per environment via env vars so the hub can
 // promote a new build without a redeploy.
-const AGENT_LATEST_VERSION = "1.5.6";
+const AGENT_LATEST_VERSION = "1.5.7";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
