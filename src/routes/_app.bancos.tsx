@@ -807,12 +807,13 @@ function DatabaseDialog({
       let dbId: string | null = initial?.id ?? null;
 
       if (initial) {
-        const { error } = await supabase.from("databases").update(form).eq("id", initial.id);
+        const { error } = await supabase.from("databases").update(form as any).eq("id", initial.id);
         if (error) throw error;
         toast.success("Banco atualizado");
       } else {
         const { data: inserted, error } = await supabase
-          .from("databases").insert(form).select("id").single();
+          .from("databases").insert(form as any).select("id").single();
+
         if (error) throw error;
         dbId = inserted?.id ?? null;
         toast.success("Banco cadastrado. Use 'Testar' para validar a conexão.");
