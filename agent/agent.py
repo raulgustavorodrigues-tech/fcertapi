@@ -978,7 +978,7 @@ def do_sync() -> None:
         log.error("sync falhou: %s", e)
 
 
-SYNC_ENTREGAS_WINDOW_DAYS = int(os.getenv("SYNC_ENTREGAS_WINDOW_DAYS", "30"))
+SYNC_ENTREGAS_WINDOW_DAYS = int(os.getenv("SYNC_ENTREGAS_WINDOW_DAYS", "60"))
 SYNC_ENTREGAS_URL = os.getenv("SYNC_ENTREGAS_URL", "").strip()
 
 
