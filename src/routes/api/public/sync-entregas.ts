@@ -113,7 +113,7 @@ export const Route = createFileRoute("/api/public/sync-entregas")({
           database_id: db.id,
           last_sync_at: now,
           rows_synced: upserted,
-          window_days: data.window_days ?? 30,
+          window_days: data.window_days ?? 60,
         }, { onConflict: "database_id" });
 
         return Response.json({ success: true, upserted }, { headers: CORS });

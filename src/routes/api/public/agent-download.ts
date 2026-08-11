@@ -14,7 +14,7 @@ const CORS = {
 };
 
 const DEFAULT_INSTALLER_URL =
-  "https://github.com/raulgustavorodrigues-tech/fcertapi/releases/download/agent-v1.5.6/firesync-agent-setup.exe";
+  "https://github.com/raulgustavorodrigues-tech/fcertapi/releases/download/agent-v1.5.7/firesync-agent-setup.exe";
 
 function err(status: number, msg: string) {
   return new Response(msg, { status, headers: { ...CORS, "Content-Type": "text/plain" } });
