@@ -109,12 +109,23 @@ export const Route = createFileRoute("/api/public/sync-entregas")({
           upserted += chunk.length;
         }
 
-        await supabaseAdmin.from("entregas_sync_status").upsert({
-          database_id: db.id,
-          last_sync_at: now,
-          rows_synced: upserted,
-          window_days: data.window_days ?? 60,
-        }, { onConflict: "database_id" });
+        await Promise.all([
+          supabaseAdmin.from("entregas_sync_status").upsert({
+            database_id: db.id,
+            last_sync_at: now,
+            rows_synced: upserted,
+            window_days: data.window_days ?? 60,
+          }, { onConflict: "database_id" }),
+          supabaseAdmin.from("sync_logs").insert({
+            database_id: db.id,
+            started_at: now,
+            finished_at: now,
+            duration_ms: 0,
+            records_count: upserted,
+            status: "success",
+            table_name: "entregas_sync",
+          }),
+        ]);
 
         return Response.json({ success: true, upserted }, { headers: CORS });
       },
