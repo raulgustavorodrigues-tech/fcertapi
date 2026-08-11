@@ -123,7 +123,6 @@ export const Route = createFileRoute("/api/public/sync-entregas")({
             duration_ms: 0,
             records_count: upserted,
             status: "success",
-            table_name: "entregas_sync",
           }),
         ]);
 
