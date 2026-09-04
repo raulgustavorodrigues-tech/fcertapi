@@ -39,6 +39,9 @@ export const Route = createFileRoute("/api/public/agent-probe")({
           .maybeSingle();
         if (error || !db) return err(404, "Banco não encontrado");
 
+        const { resolveDbPassword } = await import("@/lib/db-crypto.server");
+        const dbPass = (await resolveDbPassword(db as any)) ?? "masterkey";
+
         const origin = `${url.protocol}//${url.host}`;
         const folder = `firesync-probe-${slug(db.agent_uid ?? db.name)}`;
 

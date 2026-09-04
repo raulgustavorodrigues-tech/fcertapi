@@ -53,6 +53,9 @@ export const Route = createFileRoute("/api/public/agent-installer")({
           .maybeSingle();
         if (error || !db) return err(404, "Banco não encontrado");
 
+        const { resolveDbPassword } = await import("@/lib/db-crypto.server");
+        const dbPass = (await resolveDbPassword(db as any)) ?? "masterkey";
+
         const origin = `${url.protocol}//${url.host}`;
         const folder = `firesync-agent-${slug(db.agent_uid ?? db.name)}`;
         const installerUrl = process.env.AGENT_INSTALLER_URL || DEFAULT_INSTALLER_URL;

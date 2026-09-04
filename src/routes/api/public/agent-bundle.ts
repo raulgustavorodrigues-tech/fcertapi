@@ -58,6 +58,9 @@ export const Route = createFileRoute("/api/public/agent-bundle")({
           await supabaseAdmin.from("databases").update({ agent_token }).eq("id", db.id);
         }
 
+        const { resolveDbPassword } = await import("@/lib/db-crypto.server");
+        const dbPass = (await resolveDbPassword(db as any)) ?? "masterkey";
+
         const origin = `${url.protocol}//${url.host}`;
         const folder = `firesync-agent-${slug(agent_uid)}`;
 
