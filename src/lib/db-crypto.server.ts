@@ -42,10 +42,10 @@ export async function encryptSecret(plaintext: string): Promise<string> {
 export async function decryptSecret(value: string | null | undefined): Promise<string | null> {
   if (!value) return null;
   if (!value.startsWith(PREFIX)) return value; // legacy plaintext fallback
-  const [, ivPart, ctPart] = value.split(".").slice(0, 4).length === 4
-    ? [null, value.split(".")[2], value.split(".")[3]]
-    : [null, null, null];
-  if (!ivPart || !ctPart) return null;
+  const parts = value.split(".");
+  const ivPart = parts[2];
+  const ctPart = parts[3];
+  if (parts.length !== 4 || !ivPart || !ctPart) return null;
   try {
     const key = await getKey();
     const pt = await crypto.subtle.decrypt(
