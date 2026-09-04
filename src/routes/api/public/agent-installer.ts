@@ -42,9 +42,9 @@ export const Route = createFileRoute("/api/public/agent-installer")({
       OPTIONS: async () => new Response(null, { status: 204, headers: CORS }),
       GET: async ({ request }) => {
         const url = new URL(request.url);
-        const id = url.searchParams.get("database_id");
-        const token = url.searchParams.get("token");
-        if (!id || !token) return err(400, "database_id e token são obrigatórios");
+        const { consumeTicket } = await import("@/lib/download-tickets.server");
+        const id = await consumeTicket(url.searchParams.get("ticket"), "agent-installer");
+        if (!id) return err(401, "Link de download inválido, expirado ou já utilizado");
 
         const { data: db, error } = await supabaseAdmin
           .from("databases")
@@ -52,8 +52,9 @@ export const Route = createFileRoute("/api/public/agent-installer")({
           .eq("id", id)
           .maybeSingle();
         if (error || !db) return err(404, "Banco não encontrado");
-        if (!db.agent_token || db.agent_token !== token)
-          return err(401, "Token inválido");
+
+        const { resolveDbPassword } = await import("@/lib/db-crypto.server");
+        const dbPass = (await resolveDbPassword(db as any)) ?? "masterkey";
 
         const origin = `${url.protocol}//${url.host}`;
         const folder = `firesync-agent-${slug(db.agent_uid ?? db.name)}`;
@@ -79,7 +80,7 @@ DB_HOST=${db.host ?? "localhost"}
 DB_PORT=${db.port ?? 3050}
 DB_PATH=${db.filepath ?? ""}
 DB_USER=${db.username ?? "SYSDBA"}
-DB_PASS=${db.password_encrypted ?? "masterkey"}
+DB_PASS=${dbPass}
 DB_CHARSET=${db.charset ?? "WIN1252"}
 DB_FIREBIRD_VERSION=${db.firebird_version ?? "2.5"}
 

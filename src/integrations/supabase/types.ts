@@ -363,6 +363,7 @@ export type Database = {
           last_sync_at: string | null
           name: string
           notes: string | null
+          password_cipher: string | null
           password_encrypted: string | null
           port: number | null
           status: string | null
@@ -385,6 +386,7 @@ export type Database = {
           last_sync_at?: string | null
           name: string
           notes?: string | null
+          password_cipher?: string | null
           password_encrypted?: string | null
           port?: number | null
           status?: string | null
@@ -407,6 +409,7 @@ export type Database = {
           last_sync_at?: string | null
           name?: string
           notes?: string | null
+          password_cipher?: string | null
           password_encrypted?: string | null
           port?: number | null
           status?: string | null
@@ -421,6 +424,47 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      download_tickets: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          database_id: string
+          expires_at: string
+          id: string
+          kind: string
+          token_hash: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          database_id: string
+          expires_at: string
+          id?: string
+          kind: string
+          token_hash: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          database_id?: string
+          expires_at?: string
+          id?: string
+          kind?: string
+          token_hash?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "download_tickets_database_id_fkey"
+            columns: ["database_id"]
+            isOneToOne: false
+            referencedRelation: "databases"
             referencedColumns: ["id"]
           },
         ]
