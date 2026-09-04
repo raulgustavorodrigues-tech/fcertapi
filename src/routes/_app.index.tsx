@@ -104,7 +104,7 @@ function DashboardPage() {
           .gte("started_at", since24h)
           .limit(50),
         supabase.from("sync_logs").select("started_at, status, records_count").gte("started_at", since24h),
-        supabase.from("entregas_sync_status").select("id", { count: "exact", head: true }).gte("last_sync_at", since24h),
+        supabase.from("entregas_sync_status").select("database_id", { count: "exact", head: true }).gte("last_sync_at", since24h),
       ]);
 
       const totalSyncs24h = (syncs24h.count ?? 0) + (entregasSyncs24h.count ?? 0);
