@@ -898,12 +898,16 @@ function DatabaseDialog({
             <Input
               type={showPwd ? "text" : "password"}
               value={form.password_encrypted}
+              placeholder={initial ? "Deixe em branco para manter a atual" : ""}
               onChange={(e) => setForm({ ...form, password_encrypted: e.target.value })}
             />
             <button type="button" onClick={() => setShowPwd(!showPwd)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground cursor-pointer">
               {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
+          <p className="text-[11px] text-muted-foreground">
+            Guardada de forma criptografada. Não é exibida novamente depois de salva.
+          </p>
         </div>
         <div className="space-y-1.5">
           <Label>Charset</Label>
