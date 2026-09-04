@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { createDownloadTicket, setDatabasePassword } from "@/lib/agent-downloads.functions";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -390,7 +391,7 @@ DB_HOST=${db.host ?? "localhost"}
 DB_PORT=${db.port ?? 3050}
 DB_PATH=${db.filepath ?? ""}
 DB_USER=${db.username ?? "SYSDBA"}
-DB_PASS=${db.password_encrypted ?? ""}
+DB_PASS=<preencha a senha do Firebird>
 DB_CHARSET=${db.charset ?? "WIN1252"}
 
 # Intervalo de sincronização (segundos)
@@ -439,7 +440,8 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
     }
     try {
       toast.info("Gerando pacote do agente…");
-      const url = `/api/public/agent-bundle?database_id=${encodeURIComponent(db.id)}&token=${encodeURIComponent(db.agent_token)}`;
+      const { ticket } = await createDownloadTicket({ data: { database_id: db.id, kind: "agent-bundle" } });
+      const url = `/api/public/agent-bundle?ticket=${encodeURIComponent(ticket)}`;
       await fetchAndSave(url, buildFilename("agent"));
       toast.success("Pacote do agente baixado");
     } catch (e: any) {
@@ -454,7 +456,8 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
     }
     try {
       toast.info("Gerando probe de diagnóstico…");
-      const url = `/api/public/agent-probe?database_id=${encodeURIComponent(db.id)}&token=${encodeURIComponent(db.agent_token)}`;
+      const { ticket } = await createDownloadTicket({ data: { database_id: db.id, kind: "agent-probe" } });
+      const url = `/api/public/agent-probe?ticket=${encodeURIComponent(ticket)}`;
       await fetchAndSave(url, buildFilename("probe"));
       toast.success("Probe baixado — rode run.bat no PC do cliente");
     } catch (e: any) {
@@ -469,7 +472,8 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
     }
     try {
       toast.info("Gerando instalador Windows…");
-      const url = `/api/public/agent-installer?database_id=${encodeURIComponent(db.id)}&token=${encodeURIComponent(db.agent_token)}`;
+      const { ticket } = await createDownloadTicket({ data: { database_id: db.id, kind: "agent-installer" } });
+      const url = `/api/public/agent-installer?ticket=${encodeURIComponent(ticket)}`;
       await fetchAndSave(url, buildFilename("installer"));
       toast.success("Instalador baixado — extraia e rode install.bat como Administrador");
     } catch (e: any) {
@@ -774,7 +778,7 @@ function DatabaseDialog({
     port: initial?.port ?? 3050,
     filepath: initial?.filepath ?? "",
     username: initial?.username ?? "SYSDBA",
-    password_encrypted: initial?.password_encrypted ?? "",
+    password_encrypted: "",
     charset: initial?.charset ?? "WIN1252",
     firebird_version: initial?.firebird_version ?? "2.5",
     agent_token: initial?.agent_token ?? "",
@@ -806,17 +810,26 @@ function DatabaseDialog({
       const tokenChanged = !!form.agent_token && form.agent_token !== (initial?.agent_token ?? "");
       let dbId: string | null = initial?.id ?? null;
 
+      // A senha do Firebird nunca é gravada direto pelo navegador: vai por
+      // uma função de servidor que a criptografa antes de salvar.
+      const { password_encrypted, ...payload } = form as any;
+      const newPassword = (password_encrypted ?? "").trim();
+
       if (initial) {
-        const { error } = await supabase.from("databases").update(form as any).eq("id", initial.id);
+        const { error } = await supabase.from("databases").update(payload as any).eq("id", initial.id);
         if (error) throw error;
         toast.success("Banco atualizado");
       } else {
         const { data: inserted, error } = await supabase
-          .from("databases").insert(form as any).select("id").single();
+          .from("databases").insert(payload as any).select("id").single();
 
         if (error) throw error;
         dbId = inserted?.id ?? null;
         toast.success("Banco cadastrado. Use 'Testar' para validar a conexão.");
+      }
+
+      if (newPassword && dbId) {
+        await setDatabasePassword({ data: { database_id: dbId, password: newPassword } });
       }
 
       if (tokenChanged && dbId) {
