@@ -219,7 +219,18 @@ function EmpresasPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {apiCompany && (
+        <CompanyApiDialog
+          key={apiCompany.id}
+          companyId={apiCompany.id}
+          companyName={apiCompany.name}
+          open
+          onOpenChange={(v) => !v && setApiCompany(null)}
+        />
+      )}
     </div>
+
   );
 }
 
