@@ -19,10 +19,12 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, Building2, Database as DatabaseIcon, Pencil, Power } from "lucide-react";
+import { Plus, Search, Building2, Database as DatabaseIcon, Pencil, Power, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { formatCNPJ, formatDateTime } from "@/lib/format";
 import { BR_STATES as BR_UFS } from "@/components/conecta/br-map-data";
+import { CompanyApiDialog } from "@/components/conecta/CompanyApiDialog";
+
 
 export const Route = createFileRoute("/_app/empresas")({
   component: EmpresasPage,
@@ -49,6 +51,8 @@ function EmpresasPage() {
   const [editing, setEditing] = useState<Company | null>(null);
   const [open, setOpen] = useState(false);
   const [toDelete, setToDelete] = useState<Company | null>(null);
+  const [apiCompany, setApiCompany] = useState<{ id: string; name: string } | null>(null);
+
 
   const { data: companies = [], isLoading } = useQuery({
     queryKey: ["companies"],
@@ -188,7 +192,11 @@ function EmpresasPage() {
                   <Button size="sm" variant="outline" onClick={() => toggleActive.mutate(c)}>
                     <Power className="h-3.5 w-3.5 mr-1" /> {c.active ? "Desativar" : "Ativar"}
                   </Button>
+                  <Button size="sm" variant="outline" onClick={() => setApiCompany({ id: c.id, name: c.name })}>
+                    <KeyRound className="h-3.5 w-3.5 mr-1" /> API / Logitech
+                  </Button>
                 </div>
+
               </Card>
             );
           })}
@@ -211,7 +219,18 @@ function EmpresasPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {apiCompany && (
+        <CompanyApiDialog
+          key={apiCompany.id}
+          companyId={apiCompany.id}
+          companyName={apiCompany.name}
+          open
+          onOpenChange={(v) => !v && setApiCompany(null)}
+        />
+      )}
     </div>
+
   );
 }
 
