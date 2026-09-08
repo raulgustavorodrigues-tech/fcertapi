@@ -51,6 +51,8 @@ function EmpresasPage() {
   const [editing, setEditing] = useState<Company | null>(null);
   const [open, setOpen] = useState(false);
   const [toDelete, setToDelete] = useState<Company | null>(null);
+  const [apiCompany, setApiCompany] = useState<{ id: string; name: string } | null>(null);
+
 
   const { data: companies = [], isLoading } = useQuery({
     queryKey: ["companies"],
@@ -190,7 +192,11 @@ function EmpresasPage() {
                   <Button size="sm" variant="outline" onClick={() => toggleActive.mutate(c)}>
                     <Power className="h-3.5 w-3.5 mr-1" /> {c.active ? "Desativar" : "Ativar"}
                   </Button>
+                  <Button size="sm" variant="outline" onClick={() => setApiCompany({ id: c.id, name: c.name })}>
+                    <KeyRound className="h-3.5 w-3.5 mr-1" /> API / Logitech
+                  </Button>
                 </div>
+
               </Card>
             );
           })}
