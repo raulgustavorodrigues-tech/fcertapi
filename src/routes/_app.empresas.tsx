@@ -19,10 +19,12 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, Building2, Database as DatabaseIcon, Pencil, Power } from "lucide-react";
+import { Plus, Search, Building2, Database as DatabaseIcon, Pencil, Power, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { formatCNPJ, formatDateTime } from "@/lib/format";
 import { BR_STATES as BR_UFS } from "@/components/conecta/br-map-data";
+import { CompanyApiDialog } from "@/components/conecta/CompanyApiDialog";
+
 
 export const Route = createFileRoute("/_app/empresas")({
   component: EmpresasPage,
