@@ -56,7 +56,11 @@ export function CompanyApiDialog({
   const [plaintext, setPlaintext] = useState<string | null>(null);
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const apiUrl = `${origin}/api/v1/entregas?data_inicio=AAAA-MM-DD&data_fim=AAAA-MM-DD`;
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const hoje = new Date();
+  const inicio = new Date(hoje.getTime() - 29 * 86400000);
+  const apiUrl = `${origin}/api/v1/entregas?data_inicio=${iso(inicio)}&data_fim=${iso(hoje)}`;
+  const apiUrlBase = `${origin}/api/v1/entregas`;
 
   const { data: keys = [], isLoading } = useQuery({
     queryKey: ["company-api-keys", companyId],
@@ -94,8 +98,15 @@ export function CompanyApiDialog({
         </DialogHeader>
 
         <div className="space-y-5">
-          <CopyRow label="Endereço da API (entregas)" value={apiUrl} />
+          <CopyRow label="Endereço da API (somente o endereço)" value={apiUrlBase} />
+          <CopyRow label="Exemplo pronto com datas reais (últimos 30 dias)" value={apiUrl} />
           <CopyRow label="Cabeçalho de autenticação" value="Authorization: Bearer SUA_CHAVE" />
+
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-xs text-muted-foreground">
+            O erro <span className="font-mono">HTTP 422</span> acontece quando a data é enviada em
+            branco ou como texto de exemplo (AAAA-MM-DD). Envie sempre datas reais no formato
+            <span className="font-mono"> 2026-09-08</span>.
+          </div>
 
           <div className="rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">
             <div className="font-medium text-foreground">Parâmetros aceitos</div>
