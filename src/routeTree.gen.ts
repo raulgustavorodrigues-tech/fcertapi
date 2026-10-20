@@ -9,40 +9,40 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
-import { Route as AppTabelasRouteImport } from './routes/_app.tabelas'
-import { Route as AppSincronizacaoRouteImport } from './routes/_app.sincronizacao'
-import { Route as AppQueriesRouteImport } from './routes/_app.queries'
-import { Route as AppEmpresasRouteImport } from './routes/_app.empresas'
-import { Route as AppConfiguracoesRouteImport } from './routes/_app.configuracoes'
-import { Route as AppConectividadeRouteImport } from './routes/_app.conectividade'
-import { Route as AppBancosRouteImport } from './routes/_app.bancos'
-import { Route as AppAgenteRouteImport } from './routes/_app.agente'
 import { Route as AppAcessosRouteImport } from './routes/_app.acessos'
-import { Route as ApiV1EntregasRouteImport } from './routes/api/v1/entregas'
-import { Route as ApiPublicSyncEntregasRouteImport } from './routes/api/public/sync-entregas'
-import { Route as ApiPublicSyncRouteImport } from './routes/api/public/sync'
-import { Route as ApiPublicRegisterRouteImport } from './routes/api/public/register'
-import { Route as ApiPublicLogsRouteImport } from './routes/api/public/logs'
-import { Route as ApiPublicHeartbeatRouteImport } from './routes/api/public/heartbeat'
-import { Route as ApiPublicCommand_resultRouteImport } from './routes/api/public/command_result'
-import { Route as ApiPublicCommand_progressRouteImport } from './routes/api/public/command_progress'
-import { Route as ApiPublicAgentVersionRouteImport } from './routes/api/public/agent-version'
-import { Route as ApiPublicAgentReportRouteImport } from './routes/api/public/agent-report'
-import { Route as ApiPublicAgentProbeRouteImport } from './routes/api/public/agent-probe'
-import { Route as ApiPublicAgentInstallerRouteImport } from './routes/api/public/agent-installer'
-import { Route as ApiPublicAgentDownloadRouteImport } from './routes/api/public/agent-download'
+import { Route as AppAgenteRouteImport } from './routes/_app.agente'
+import { Route as AppBancosRouteImport } from './routes/_app.bancos'
+import { Route as AppConectividadeRouteImport } from './routes/_app.conectividade'
+import { Route as AppConfiguracoesRouteImport } from './routes/_app.configuracoes'
+import { Route as AppEmpresasRouteImport } from './routes/_app.empresas'
+import { Route as AppQueriesRouteImport } from './routes/_app.queries'
+import { Route as AppSincronizacaoRouteImport } from './routes/_app.sincronizacao'
+import { Route as AppTabelasRouteImport } from './routes/_app.tabelas'
 import { Route as ApiPublicAgentBundleRouteImport } from './routes/api/public/agent-bundle'
+import { Route as ApiPublicAgentDownloadRouteImport } from './routes/api/public/agent-download'
+import { Route as ApiPublicAgentInstallerRouteImport } from './routes/api/public/agent-installer'
+import { Route as ApiPublicAgentProbeRouteImport } from './routes/api/public/agent-probe'
+import { Route as ApiPublicAgentReportRouteImport } from './routes/api/public/agent-report'
+import { Route as ApiPublicAgentVersionRouteImport } from './routes/api/public/agent-version'
+import { Route as ApiPublicCommand_progressRouteImport } from './routes/api/public/command_progress'
+import { Route as ApiPublicCommand_resultRouteImport } from './routes/api/public/command_result'
+import { Route as ApiPublicHeartbeatRouteImport } from './routes/api/public/heartbeat'
+import { Route as ApiPublicLogsRouteImport } from './routes/api/public/logs'
+import { Route as ApiPublicRegisterRouteImport } from './routes/api/public/register'
+import { Route as ApiPublicSyncRouteImport } from './routes/api/public/sync'
+import { Route as ApiPublicSyncEntregasRouteImport } from './routes/api/public/sync-entregas'
+import { Route as ApiV1EntregasRouteImport } from './routes/api/v1/entregas'
 
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AppRoute = AppRouteImport.update({
-  id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppIndexRoute = AppIndexRouteImport.update({
@@ -50,39 +50,9 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppTabelasRoute = AppTabelasRouteImport.update({
-  id: '/tabelas',
-  path: '/tabelas',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppSincronizacaoRoute = AppSincronizacaoRouteImport.update({
-  id: '/sincronizacao',
-  path: '/sincronizacao',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppQueriesRoute = AppQueriesRouteImport.update({
-  id: '/queries',
-  path: '/queries',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppEmpresasRoute = AppEmpresasRouteImport.update({
-  id: '/empresas',
-  path: '/empresas',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppConfiguracoesRoute = AppConfiguracoesRouteImport.update({
-  id: '/configuracoes',
-  path: '/configuracoes',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppConectividadeRoute = AppConectividadeRouteImport.update({
-  id: '/conectividade',
-  path: '/conectividade',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppBancosRoute = AppBancosRouteImport.update({
-  id: '/bancos',
-  path: '/bancos',
+const AppAcessosRoute = AppAcessosRouteImport.update({
+  id: '/acessos',
+  path: '/acessos',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAgenteRoute = AppAgenteRouteImport.update({
@@ -90,44 +60,69 @@ const AppAgenteRoute = AppAgenteRouteImport.update({
   path: '/agente',
   getParentRoute: () => AppRoute,
 } as any)
-const AppAcessosRoute = AppAcessosRouteImport.update({
-  id: '/acessos',
-  path: '/acessos',
+const AppBancosRoute = AppBancosRouteImport.update({
+  id: '/bancos',
+  path: '/bancos',
   getParentRoute: () => AppRoute,
 } as any)
-const ApiV1EntregasRoute = ApiV1EntregasRouteImport.update({
-  id: '/api/v1/entregas',
-  path: '/api/v1/entregas',
+const AppConectividadeRoute = AppConectividadeRouteImport.update({
+  id: '/conectividade',
+  path: '/conectividade',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppConfiguracoesRoute = AppConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEmpresasRoute = AppEmpresasRouteImport.update({
+  id: '/empresas',
+  path: '/empresas',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppQueriesRoute = AppQueriesRouteImport.update({
+  id: '/queries',
+  path: '/queries',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSincronizacaoRoute = AppSincronizacaoRouteImport.update({
+  id: '/sincronizacao',
+  path: '/sincronizacao',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTabelasRoute = AppTabelasRouteImport.update({
+  id: '/tabelas',
+  path: '/tabelas',
+  getParentRoute: () => AppRoute,
+} as any)
+const ApiPublicAgentBundleRoute = ApiPublicAgentBundleRouteImport.update({
+  id: '/api/public/agent-bundle',
+  path: '/api/public/agent-bundle',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicSyncEntregasRoute = ApiPublicSyncEntregasRouteImport.update({
-  id: '/api/public/sync-entregas',
-  path: '/api/public/sync-entregas',
+const ApiPublicAgentDownloadRoute = ApiPublicAgentDownloadRouteImport.update({
+  id: '/api/public/agent-download',
+  path: '/api/public/agent-download',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicSyncRoute = ApiPublicSyncRouteImport.update({
-  id: '/api/public/sync',
-  path: '/api/public/sync',
+const ApiPublicAgentInstallerRoute = ApiPublicAgentInstallerRouteImport.update({
+  id: '/api/public/agent-installer',
+  path: '/api/public/agent-installer',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicRegisterRoute = ApiPublicRegisterRouteImport.update({
-  id: '/api/public/register',
-  path: '/api/public/register',
+const ApiPublicAgentProbeRoute = ApiPublicAgentProbeRouteImport.update({
+  id: '/api/public/agent-probe',
+  path: '/api/public/agent-probe',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicLogsRoute = ApiPublicLogsRouteImport.update({
-  id: '/api/public/logs',
-  path: '/api/public/logs',
+const ApiPublicAgentReportRoute = ApiPublicAgentReportRouteImport.update({
+  id: '/api/public/agent-report',
+  path: '/api/public/agent-report',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicHeartbeatRoute = ApiPublicHeartbeatRouteImport.update({
-  id: '/api/public/heartbeat',
-  path: '/api/public/heartbeat',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicCommand_resultRoute = ApiPublicCommand_resultRouteImport.update({
-  id: '/api/public/command_result',
-  path: '/api/public/command_result',
+const ApiPublicAgentVersionRoute = ApiPublicAgentVersionRouteImport.update({
+  id: '/api/public/agent-version',
+  path: '/api/public/agent-version',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicCommand_progressRoute =
@@ -136,34 +131,39 @@ const ApiPublicCommand_progressRoute =
     path: '/api/public/command_progress',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicAgentVersionRoute = ApiPublicAgentVersionRouteImport.update({
-  id: '/api/public/agent-version',
-  path: '/api/public/agent-version',
+const ApiPublicCommand_resultRoute = ApiPublicCommand_resultRouteImport.update({
+  id: '/api/public/command_result',
+  path: '/api/public/command_result',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicAgentReportRoute = ApiPublicAgentReportRouteImport.update({
-  id: '/api/public/agent-report',
-  path: '/api/public/agent-report',
+const ApiPublicHeartbeatRoute = ApiPublicHeartbeatRouteImport.update({
+  id: '/api/public/heartbeat',
+  path: '/api/public/heartbeat',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicAgentProbeRoute = ApiPublicAgentProbeRouteImport.update({
-  id: '/api/public/agent-probe',
-  path: '/api/public/agent-probe',
+const ApiPublicLogsRoute = ApiPublicLogsRouteImport.update({
+  id: '/api/public/logs',
+  path: '/api/public/logs',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicAgentInstallerRoute = ApiPublicAgentInstallerRouteImport.update({
-  id: '/api/public/agent-installer',
-  path: '/api/public/agent-installer',
+const ApiPublicRegisterRoute = ApiPublicRegisterRouteImport.update({
+  id: '/api/public/register',
+  path: '/api/public/register',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicAgentDownloadRoute = ApiPublicAgentDownloadRouteImport.update({
-  id: '/api/public/agent-download',
-  path: '/api/public/agent-download',
+const ApiPublicSyncRoute = ApiPublicSyncRouteImport.update({
+  id: '/api/public/sync',
+  path: '/api/public/sync',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicAgentBundleRoute = ApiPublicAgentBundleRouteImport.update({
-  id: '/api/public/agent-bundle',
-  path: '/api/public/agent-bundle',
+const ApiPublicSyncEntregasRoute = ApiPublicSyncEntregasRouteImport.update({
+  id: '/api/public/sync-entregas',
+  path: '/api/public/sync-entregas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1EntregasRoute = ApiV1EntregasRouteImport.update({
+  id: '/api/v1/entregas',
+  path: '/api/v1/entregas',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -356,18 +356,18 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_app': {
       id: '/_app'
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/': {
@@ -377,53 +377,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/tabelas': {
-      id: '/_app/tabelas'
-      path: '/tabelas'
-      fullPath: '/tabelas'
-      preLoaderRoute: typeof AppTabelasRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/sincronizacao': {
-      id: '/_app/sincronizacao'
-      path: '/sincronizacao'
-      fullPath: '/sincronizacao'
-      preLoaderRoute: typeof AppSincronizacaoRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/queries': {
-      id: '/_app/queries'
-      path: '/queries'
-      fullPath: '/queries'
-      preLoaderRoute: typeof AppQueriesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/empresas': {
-      id: '/_app/empresas'
-      path: '/empresas'
-      fullPath: '/empresas'
-      preLoaderRoute: typeof AppEmpresasRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/configuracoes': {
-      id: '/_app/configuracoes'
-      path: '/configuracoes'
-      fullPath: '/configuracoes'
-      preLoaderRoute: typeof AppConfiguracoesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/conectividade': {
-      id: '/_app/conectividade'
-      path: '/conectividade'
-      fullPath: '/conectividade'
-      preLoaderRoute: typeof AppConectividadeRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/bancos': {
-      id: '/_app/bancos'
-      path: '/bancos'
-      fullPath: '/bancos'
-      preLoaderRoute: typeof AppBancosRouteImport
+    '/_app/acessos': {
+      id: '/_app/acessos'
+      path: '/acessos'
+      fullPath: '/acessos'
+      preLoaderRoute: typeof AppAcessosRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/agente': {
@@ -433,95 +391,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAgenteRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/acessos': {
-      id: '/_app/acessos'
-      path: '/acessos'
-      fullPath: '/acessos'
-      preLoaderRoute: typeof AppAcessosRouteImport
+    '/_app/bancos': {
+      id: '/_app/bancos'
+      path: '/bancos'
+      fullPath: '/bancos'
+      preLoaderRoute: typeof AppBancosRouteImport
       parentRoute: typeof AppRoute
     }
-    '/api/v1/entregas': {
-      id: '/api/v1/entregas'
-      path: '/api/v1/entregas'
-      fullPath: '/api/v1/entregas'
-      preLoaderRoute: typeof ApiV1EntregasRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_app/conectividade': {
+      id: '/_app/conectividade'
+      path: '/conectividade'
+      fullPath: '/conectividade'
+      preLoaderRoute: typeof AppConectividadeRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/api/public/sync-entregas': {
-      id: '/api/public/sync-entregas'
-      path: '/api/public/sync-entregas'
-      fullPath: '/api/public/sync-entregas'
-      preLoaderRoute: typeof ApiPublicSyncEntregasRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_app/configuracoes': {
+      id: '/_app/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof AppConfiguracoesRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/api/public/sync': {
-      id: '/api/public/sync'
-      path: '/api/public/sync'
-      fullPath: '/api/public/sync'
-      preLoaderRoute: typeof ApiPublicSyncRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_app/empresas': {
+      id: '/_app/empresas'
+      path: '/empresas'
+      fullPath: '/empresas'
+      preLoaderRoute: typeof AppEmpresasRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/api/public/register': {
-      id: '/api/public/register'
-      path: '/api/public/register'
-      fullPath: '/api/public/register'
-      preLoaderRoute: typeof ApiPublicRegisterRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_app/queries': {
+      id: '/_app/queries'
+      path: '/queries'
+      fullPath: '/queries'
+      preLoaderRoute: typeof AppQueriesRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/api/public/logs': {
-      id: '/api/public/logs'
-      path: '/api/public/logs'
-      fullPath: '/api/public/logs'
-      preLoaderRoute: typeof ApiPublicLogsRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_app/sincronizacao': {
+      id: '/_app/sincronizacao'
+      path: '/sincronizacao'
+      fullPath: '/sincronizacao'
+      preLoaderRoute: typeof AppSincronizacaoRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/api/public/heartbeat': {
-      id: '/api/public/heartbeat'
-      path: '/api/public/heartbeat'
-      fullPath: '/api/public/heartbeat'
-      preLoaderRoute: typeof ApiPublicHeartbeatRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_app/tabelas': {
+      id: '/_app/tabelas'
+      path: '/tabelas'
+      fullPath: '/tabelas'
+      preLoaderRoute: typeof AppTabelasRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/api/public/command_result': {
-      id: '/api/public/command_result'
-      path: '/api/public/command_result'
-      fullPath: '/api/public/command_result'
-      preLoaderRoute: typeof ApiPublicCommand_resultRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/command_progress': {
-      id: '/api/public/command_progress'
-      path: '/api/public/command_progress'
-      fullPath: '/api/public/command_progress'
-      preLoaderRoute: typeof ApiPublicCommand_progressRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/agent-version': {
-      id: '/api/public/agent-version'
-      path: '/api/public/agent-version'
-      fullPath: '/api/public/agent-version'
-      preLoaderRoute: typeof ApiPublicAgentVersionRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/agent-report': {
-      id: '/api/public/agent-report'
-      path: '/api/public/agent-report'
-      fullPath: '/api/public/agent-report'
-      preLoaderRoute: typeof ApiPublicAgentReportRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/agent-probe': {
-      id: '/api/public/agent-probe'
-      path: '/api/public/agent-probe'
-      fullPath: '/api/public/agent-probe'
-      preLoaderRoute: typeof ApiPublicAgentProbeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/agent-installer': {
-      id: '/api/public/agent-installer'
-      path: '/api/public/agent-installer'
-      fullPath: '/api/public/agent-installer'
-      preLoaderRoute: typeof ApiPublicAgentInstallerRouteImport
+    '/api/public/agent-bundle': {
+      id: '/api/public/agent-bundle'
+      path: '/api/public/agent-bundle'
+      fullPath: '/api/public/agent-bundle'
+      preLoaderRoute: typeof ApiPublicAgentBundleRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/agent-download': {
@@ -531,11 +454,88 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAgentDownloadRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/agent-bundle': {
-      id: '/api/public/agent-bundle'
-      path: '/api/public/agent-bundle'
-      fullPath: '/api/public/agent-bundle'
-      preLoaderRoute: typeof ApiPublicAgentBundleRouteImport
+    '/api/public/agent-installer': {
+      id: '/api/public/agent-installer'
+      path: '/api/public/agent-installer'
+      fullPath: '/api/public/agent-installer'
+      preLoaderRoute: typeof ApiPublicAgentInstallerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/agent-probe': {
+      id: '/api/public/agent-probe'
+      path: '/api/public/agent-probe'
+      fullPath: '/api/public/agent-probe'
+      preLoaderRoute: typeof ApiPublicAgentProbeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/agent-report': {
+      id: '/api/public/agent-report'
+      path: '/api/public/agent-report'
+      fullPath: '/api/public/agent-report'
+      preLoaderRoute: typeof ApiPublicAgentReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/agent-version': {
+      id: '/api/public/agent-version'
+      path: '/api/public/agent-version'
+      fullPath: '/api/public/agent-version'
+      preLoaderRoute: typeof ApiPublicAgentVersionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/command_progress': {
+      id: '/api/public/command_progress'
+      path: '/api/public/command_progress'
+      fullPath: '/api/public/command_progress'
+      preLoaderRoute: typeof ApiPublicCommand_progressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/command_result': {
+      id: '/api/public/command_result'
+      path: '/api/public/command_result'
+      fullPath: '/api/public/command_result'
+      preLoaderRoute: typeof ApiPublicCommand_resultRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/heartbeat': {
+      id: '/api/public/heartbeat'
+      path: '/api/public/heartbeat'
+      fullPath: '/api/public/heartbeat'
+      preLoaderRoute: typeof ApiPublicHeartbeatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/logs': {
+      id: '/api/public/logs'
+      path: '/api/public/logs'
+      fullPath: '/api/public/logs'
+      preLoaderRoute: typeof ApiPublicLogsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/register': {
+      id: '/api/public/register'
+      path: '/api/public/register'
+      fullPath: '/api/public/register'
+      preLoaderRoute: typeof ApiPublicRegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/sync': {
+      id: '/api/public/sync'
+      path: '/api/public/sync'
+      fullPath: '/api/public/sync'
+      preLoaderRoute: typeof ApiPublicSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/sync-entregas': {
+      id: '/api/public/sync-entregas'
+      path: '/api/public/sync-entregas'
+      fullPath: '/api/public/sync-entregas'
+      preLoaderRoute: typeof ApiPublicSyncEntregasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/entregas': {
+      id: '/api/v1/entregas'
+      path: '/api/v1/entregas'
+      fullPath: '/api/v1/entregas'
+      preLoaderRoute: typeof ApiV1EntregasRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
