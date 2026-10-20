@@ -94,10 +94,10 @@ export const Route = createFileRoute("/api/public/heartbeat")({
           system_info: (Object.keys(mergedSystemInfo).length ? mergedSystemInfo : null) as any,
         };
 
-        let interval = 30;
+        let interval = 120;
         if (existing) {
           await supabaseAdmin.from("agents").update(update).eq("id", existing.id);
-          interval = existing.heartbeat_interval_seconds ?? 30;
+          interval = Math.max(existing.heartbeat_interval_seconds ?? 120, 120);
         } else {
           await supabaseAdmin.from("agents").insert({
             ...update,
