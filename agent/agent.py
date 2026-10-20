@@ -41,7 +41,7 @@ from typing import Any, Dict, List, Optional
 # ---------------------------------------------------------------------------
 # Constantes
 # ---------------------------------------------------------------------------
-AGENT_VERSION = "1.5.7"
+AGENT_VERSION = "1.5.8"
 SERVICE_NAME = "FireSyncAgent"
 SERVICE_DISPLAY = "FireSync LocalBridge Agent"
 SERVICE_DESC = (
@@ -106,8 +106,8 @@ CFG = {
     "db_user":             os.getenv("DB_USER", "SYSDBA"),
     "db_pass":             os.getenv("DB_PASS", "masterkey"),
     "db_charset":          os.getenv("DB_CHARSET", "WIN1252"),
-    "sync_interval":       int(os.getenv("SYNC_INTERVAL", "900")),
-    "heartbeat_interval":  int(os.getenv("HEARTBEAT_INTERVAL", "30")),
+    "sync_interval":       int(os.getenv("SYNC_INTERVAL", "1800")),
+    "heartbeat_interval":  int(os.getenv("HEARTBEAT_INTERVAL", "120")),
     "sync_tables":         os.getenv("SYNC_TABLES", "ALL"),
     "log_level":           os.getenv("LOG_LEVEL", "INFO"),
     "auto_update":         os.getenv("AUTO_UPDATE", "1") == "1",
@@ -545,6 +545,9 @@ def heartbeat() -> List[Dict[str, Any]]:
             new_interval = cfg.get("sync_interval")
             if isinstance(new_interval, int) and new_interval > 0:
                 CFG["sync_interval"] = new_interval
+            hb = body.get("next_heartbeat_in")
+            if isinstance(hb, int) and hb > 0:
+                CFG["heartbeat_interval"] = max(30, min(hb, 600))
             return body.get("pending_commands", []) or []
     except Exception as e:
         log.warning("heartbeat falhou: %s", e)
@@ -1068,6 +1071,7 @@ def run_loop(stop_check=lambda: _STOP) -> None:
     register()
     last_sync = 0.0
     fails = 0
+    fast_cycles = 0
     while not stop_check():
         had_cmds = False
         try:
@@ -1089,8 +1093,12 @@ def run_loop(stop_check=lambda: _STOP) -> None:
             fails += 1
             log.error("loop principal (%s consecutivas): %s", fails, e)
         # Backoff exponencial se falhas repetidas
-        sleep_s = 5 if had_cmds else min(CFG["heartbeat_interval"] * (1 + fails // 5),
-                                         300)
+        if had_cmds:
+            fast_cycles = 3
+        elif fast_cycles > 0:
+            fast_cycles -= 1
+        sleep_s = 5 if (had_cmds or fast_cycles > 0) else min(CFG["heartbeat_interval"] * (1 + fails // 5),
+                                         600)
         for _ in range(sleep_s):
             if stop_check():
                 break

@@ -16,13 +16,13 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/agente")({ component: AgentePage });
 
-const ONLINE_MS = 90_000; // heartbeat considerado ativo até 90s
+const ONLINE_MS = 300_000; // heartbeat considerado ativo até 5 min
 
 function statusOf(lastHb: string | null): "online" | "stale" | "offline" {
   if (!lastHb) return "offline";
   const diff = Date.now() - new Date(lastHb).getTime();
   if (diff < ONLINE_MS) return "online";
-  if (diff < ONLINE_MS * 4) return "stale";
+  if (diff < ONLINE_MS * 2) return "stale";
   return "offline";
 }
 

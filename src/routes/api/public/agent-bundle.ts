@@ -97,8 +97,8 @@ DB_CHARSET=${db.charset ?? "WIN1252"}
 DB_FIREBIRD_VERSION=${db.firebird_version ?? "2.5"}
 
 # Intervalos (segundos)
-SYNC_INTERVAL=${db.sync_interval ?? 900}
-HEARTBEAT_INTERVAL=30
+SYNC_INTERVAL=${db.sync_interval ?? 1800}
+HEARTBEAT_INTERVAL=120
 COMMAND_POLL_INTERVAL=5
 
 # Tabelas (separadas por vírgula ou ALL)

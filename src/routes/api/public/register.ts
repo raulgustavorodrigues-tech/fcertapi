@@ -89,8 +89,8 @@ export const Route = createFileRoute("/api/public/register")({
         return Response.json({
           success: true,
           config: {
-            heartbeat_interval_seconds: 30,
-            sync_interval_seconds: db.sync_interval ?? 900,
+            heartbeat_interval_seconds: 120,
+            sync_interval_seconds: db.sync_interval ?? 1800,
             sync_tables: db.sync_tables ?? "ALL",
           },
         }, { headers: CORS });

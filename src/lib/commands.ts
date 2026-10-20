@@ -90,7 +90,7 @@ export async function awaitCommandResult(
   command_id: string,
   opts: { timeoutMs?: number; intervalMs?: number; onUpdate?: (row: any) => void } = {},
 ): Promise<any> {
-  const timeoutMs = opts.timeoutMs ?? 60_000;
+  const timeoutMs = opts.timeoutMs ?? 180_000;
   const intervalMs = opts.intervalMs ?? 2_000;
   const start = Date.now();
 
@@ -131,7 +131,7 @@ export function agentConnectionMode(agent: {
     return { mode: "offline", label: "Offline", tone: "destructive" };
   }
   const ageMs = Date.now() - new Date(agent.last_heartbeat_at).getTime();
-  if (ageMs > 5 * 60 * 1000) {
+  if (ageMs > 10 * 60 * 1000) {
     return { mode: "offline", label: "Offline", tone: "destructive" };
   }
   if (agent.tunnel_url) {
@@ -147,7 +147,7 @@ export function heartbeatTone(last: string | null | undefined): {
 } {
   if (!last) return { color: "destructive", ageSeconds: null, label: "Sem heartbeat" };
   const ageSec = Math.floor((Date.now() - new Date(last).getTime()) / 1000);
-  if (ageSec < 60) return { color: "success", ageSeconds: ageSec, label: `há ${ageSec}s` };
-  if (ageSec < 300) return { color: "warning", ageSeconds: ageSec, label: `há ${Math.floor(ageSec / 60)}min` };
+  if (ageSec < 300) return { color: "success", ageSeconds: ageSec, label: `há ${ageSec}s` };
+  if (ageSec < 600) return { color: "warning", ageSeconds: ageSec, label: `há ${Math.floor(ageSec / 60)}min` };
   return { color: "destructive", ageSeconds: ageSec, label: `há ${Math.floor(ageSec / 60)}min` };
 }

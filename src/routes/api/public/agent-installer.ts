@@ -20,7 +20,7 @@ const CORS = {
 };
 
 const DEFAULT_INSTALLER_URL =
-  "https://github.com/raulgustavorodrigues-tech/fcertapi/releases/download/agent-v1.5.7/firesync-agent-setup.exe";
+  "https://github.com/raulgustavorodrigues-tech/fcertapi/releases/download/agent-v1.5.8/firesync-agent-setup.exe";
 
 function err(status: number, msg: string) {
   return new Response(msg, { status, headers: { ...CORS, "Content-Type": "text/plain" } });
@@ -84,8 +84,8 @@ DB_PASS=${dbPass}
 DB_CHARSET=${db.charset ?? "WIN1252"}
 DB_FIREBIRD_VERSION=${db.firebird_version ?? "2.5"}
 
-SYNC_INTERVAL=${db.sync_interval ?? 900}
-HEARTBEAT_INTERVAL=30
+SYNC_INTERVAL=${db.sync_interval ?? 1800}
+HEARTBEAT_INTERVAL=120
 SYNC_TABLES=${db.sync_tables ?? "ALL"}
 SYNC_ENTREGAS_WINDOW_DAYS=${db.sync_entregas_window_days ?? 60}
 LOG_LEVEL=INFO
