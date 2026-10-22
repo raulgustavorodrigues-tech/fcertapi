@@ -100,12 +100,12 @@ jobs:
           }
 
           $sha = ""
-          $shaPath = "agent/Output/firesync-agent-setup.exe.sha256"
+          $shaPath = "Output/firesync-agent-setup.exe.sha256"
           if (Test-Path $shaPath) {
             $sha = (Get-Content $shaPath -Raw).Trim().Split(' ')[0]
           }
 
-          $txtPath = "agent/Output/BAIXAR-AGENTE.txt"
+          $txtPath = "Output/BAIXAR-AGENTE.txt"
           $lines = @()
           $lines += "FireSync LocalBridge - BAIXAR AGENTE MANUALMENTE"
           $lines += "================================================="
