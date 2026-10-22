@@ -92,7 +92,7 @@ jobs:
             try {
               $r = Invoke-WebRequest -Uri $url -Method Head -MaximumRedirection 5 -UseBasicParsing -ErrorAction Stop
               if ($r.StatusCode -eq 200) { $ok = $true; break }
-              Write-Host "Tentativa $i: HTTP $($r.StatusCode)"
+              Write-Host "Tentativa ${i}: HTTP $($r.StatusCode)"
             } catch {
               Write-Host "Tentativa $i falhou: $($_.Exception.Message)"
             }
