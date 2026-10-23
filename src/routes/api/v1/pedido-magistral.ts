@@ -3,6 +3,7 @@
 // Retorna, por produto: cadastro, estoque por filial, lotes com saldo, histórico de preços,
 // consumo mensal (12 meses), entradas de notas com fornecedor.
 import { createFileRoute } from "@tanstack/react-router";
+import { restrictFilter } from "@/lib/restrict-filter";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -61,7 +62,7 @@ export const Route = createFileRoute("/api/v1/pedido-magistral")({
         if (grupo) q = q.eq("grupo", grupo);
         if (situacao) q = q.eq("situa", situacao);
         if (cdpro) q = q.eq("cdpro", cdpro);
-        if (restrict) q = q.in("cdpro", restrict.slice(0, 1000));
+        if (restrict) q = q.or(restrictFilter(restrict));
         const { data: prods, count, error } = await q;
         if (error) return err(500, "DB_ERROR", "Falha ao consultar produtos");
         const codes = (prods ?? []).map((x) => x.cdpro);
