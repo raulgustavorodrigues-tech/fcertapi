@@ -13,7 +13,8 @@ export type CommandType =
   | "force_sync"
   | "network_test"
   | "check_update"
-  | "force_sync_entregas";
+  | "force_sync_entregas"
+  | "force_sync_pedido_magistral";
 
 export type PendingCommand = {
   command_id: string;

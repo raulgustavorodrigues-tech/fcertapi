@@ -89,6 +89,7 @@ function BancosPage() {
     qc.invalidateQueries({ queryKey: ["dashboard"] });
   }
 
+
   async function syncEntregas(db: any) {
     toast.info(`Solicitando sync de Entregas (60 dias) em ${db.name}…`);
     try {
@@ -663,6 +664,17 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
           </TooltipTrigger>
           <TooltipContent side="top" className="max-w-xs">
             Força a sincronização imediata do módulo de <b>Entregas</b> usando a nova janela de 60 dias.
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button size="sm" variant="outline" onClick={() => syncPedidoMagistral(db)}>
+              <RefreshCw className="h-3.5 w-3.5 mr-1 text-primary" /> Pedido Magistral agora
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-xs">
+            Envia agora os dados do <b>Pedido Magistral</b> (produtos, estoque, lotes, preços, consumo, notas e fornecedores). A 1ª vez traz 12 meses; depois só os dias novos.
           </TooltipContent>
         </Tooltip>
 
