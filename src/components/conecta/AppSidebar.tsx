@@ -11,6 +11,7 @@ import {
   Server,
   ShieldCheck,
   HeartPulse,
+  Plug,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +31,7 @@ const items: NavItem[] = [
   { to: "/queries", label: "Queries", icon: Code2 },
   { to: "/conectividade", label: "Conectividade", icon: Wifi },
   { to: "/sincronizacao", label: "Sincronização", icon: RefreshCw },
+  { to: "/apis", label: "APIs", icon: Plug },
   { to: "/acessos", label: "Acessos", icon: ShieldCheck },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
 ];
