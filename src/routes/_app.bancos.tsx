@@ -994,3 +994,16 @@ function DatabaseDialog({
     </DialogContent>
   );
 }
+
+async function syncPedidoMagistral(db: any) {
+  toast.info(`Solicitando envio do Pedido Magistral em ${db.name}…`);
+  try {
+    const { enqueueCommand, awaitCommandResult } = await import("@/lib/commands");
+    const { command_id } = await enqueueCommand(db.id, "force_sync_pedido_magistral", {});
+    const row = await awaitCommandResult(command_id, { timeoutMs: 170_000, intervalMs: 3_000 });
+    if (row.status === "success") toast.success(`${db.name}: Pedido Magistral enviado pelo agente`);
+    else toast.error(`${db.name}: ${row.error_message ?? "falha no envio do Pedido Magistral"}`);
+  } catch (e: any) {
+    toast.error(`${db.name}: ${e?.message ?? "agente não respondeu (versão 1.6.0 ou superior necessária)"}`);
+  }
+}
