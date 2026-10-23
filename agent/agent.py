@@ -41,7 +41,7 @@ from typing import Any, Dict, List, Optional
 # ---------------------------------------------------------------------------
 # Constantes
 # ---------------------------------------------------------------------------
-AGENT_VERSION = "1.5.8"
+AGENT_VERSION = "1.6.0"
 SERVICE_NAME = "FireSyncAgent"
 SERVICE_DISPLAY = "FireSync LocalBridge Agent"
 SERVICE_DESC = (
@@ -928,6 +928,10 @@ def handle_command(cmd: Dict[str, Any]) -> None:
         elif ctype == "force_sync_entregas":
             do_sync_entregas()
             res = {"synced": True, "window": SYNC_ENTREGAS_WINDOW_DAYS, "at": datetime.now(timezone.utc).isoformat()}
+        elif ctype == "force_sync_pedido_magistral":
+            global _LAST_PM
+            res = do_sync_pedido_magistral()
+            _LAST_PM = time.time()
         elif ctype == "check_update":
             # Força verificação imediata de atualização, ignorando throttle.
             global _LAST_UPDATE_CHECK
@@ -1047,6 +1051,104 @@ def do_sync_entregas() -> None:
         log.error("sync-entregas falhou: %s", e)
 
 
+# ---------------------------------------------------------------------------
+# Pedido Magistral (v1.6.0): 7 tabelas, 1x por dia.
+# 1ª carga: 12 meses de histórico. Depois: incremental (últimos dias + folga).
+# ---------------------------------------------------------------------------
+PM_INTERVAL = int(os.getenv("PEDIDO_MAGISTRAL_INTERVAL", "86400"))
+PM_HIST_DAYS = 365
+PM_OVERLAP_DAYS = 3
+PM_STATE_FILE = EXE_DIR / "pedido-magistral-state.json"
+_LAST_PM = 0.0
+
+
+def _pm_endpoint() -> str:
+    base = CFG["remote"].rsplit("/api/public/", 1)[0]
+    return f"{base}/api/public/sync-pedido-magistral"
+
+
+def _pm_load_state() -> Dict[str, str]:
+    try:
+        return json.loads(PM_STATE_FILE.read_text("utf-8"))
+    except Exception:
+        return {}
+
+
+def _pm_query(sql: str, params: tuple = ()) -> List[Dict[str, Any]]:
+    with _db_lock:
+        con = _db_conn_locked()
+        cur = con.cursor()
+        cur.execute(sql, params)
+        cols = [d[0].lower() for d in cur.description]
+        out = []
+        for rec in cur.fetchall():
+            d = {}
+            for k, v in zip(cols, rec):
+                if isinstance(v, (datetime, date)):
+                    v = str(v)[:10]
+                elif isinstance(v, Decimal):
+                    v = float(v)
+                elif isinstance(v, str):
+                    v = v.strip() or None
+                d[k] = v
+            out.append(d)
+        try: con.rollback()
+        except Exception: pass
+    return out
+
+
+def _pm_send(table: str, rows: List[Dict[str, Any]], reset: bool, final: bool) -> None:
+    chunks = [rows[i:i + 5000] for i in range(0, len(rows), 5000)] or [[]]
+    for i, chunk in enumerate(chunks):
+        payload = {"agent_uid": CFG["agent_uid"], "table": table,
+                   "reset": reset and i == 0, "final": final and i == len(chunks) - 1,
+                   "rows": chunk}
+        r = _post_json(_pm_endpoint(), payload, timeout=120)
+        if r.status_code != 200:
+            raise RuntimeError(f"pedido-magistral {table}: {r.status_code} {r.text[:200]}")
+
+
+def do_sync_pedido_magistral() -> Dict[str, Any]:
+    state = _pm_load_state()
+    today = datetime.now().date()
+    first = not state.get("last_run")
+    if first:
+        since = today - timedelta(days=PM_HIST_DAYS)
+    else:
+        since = datetime.strptime(state["last_run"], "%Y-%m-%d").date() - timedelta(days=PM_OVERLAP_DAYS)
+    since_s = since.strftime("%Y-%m-%d")
+    # consumo é por mês: recalcula desde o 1º dia do mês do corte
+    month_s = since.replace(day=1).strftime("%Y-%m-%d")
+    counts: Dict[str, int] = {}
+
+    jobs = [
+        ("produtos", "SELECT CDPRO, DESCR, UNIDA, SITUA, INDBLOQUEIO, GRUPO, INDSNGPC, PRCOM FROM FC03000", (), True),
+        ("estoque", "SELECT CDFIL, CDPRO, ESTMI, ESTMA, ESTAT FROM FC03100", (), True),
+        ("lotes", "SELECT CDFIL, CDPRO, CTLOT, STLOT, NRLOT, NRNOT, DTENT, DTVAL, ESTAT FROM FC03140 WHERE ESTAT > 0", (), True),
+        ("fornecedores", "SELECT FORNECID, NRCNPJ, FANTA FROM FC02000", (), True),
+        ("precos", "SELECT CDPRO, CAST(DTREAJ AS DATE) AS DTREAJ, MAX(PRCOM) AS PRCOM FROM FC03160 "
+                   "WHERE DTREAJ >= ? GROUP BY CDPRO, CAST(DTREAJ AS DATE)", (since_s,), False),
+        ("notas", "SELECT CDPRO, NRNOT, FORNECID, CAST(DTENT AS DATE) AS DTENT, SUM(QUANT) AS QUANT, MAX(PRUNI) AS PRUNI "
+                  "FROM FC11100 WHERE DTENT >= ? GROUP BY CDPRO, NRNOT, FORNECID, CAST(DTENT AS DATE)", (since_s,), False),
+        ("consumo_mensal", "SELECT CDPRIN AS CDPRO, EXTRACT(YEAR FROM DTENTR) AS ANO, EXTRACT(MONTH FROM DTENTR) AS MES, "
+                           "SUM(QTREAL) AS QTREAL FROM FC12110 WHERE DTENTR >= ? "
+                           "GROUP BY CDPRIN, EXTRACT(YEAR FROM DTENTR), EXTRACT(MONTH FROM DTENTR)", (month_s,), False),
+    ]
+    for idx, (table, sql, params, snapshot) in enumerate(jobs):
+        rows = _pm_query(sql, params)
+        if table == "consumo_mensal":
+            rows = [{"cdpro": r["cdpro"], "mes": f"{int(r['ano']):04d}-{int(r['mes']):02d}", "qtreal": r["qtreal"]}
+                    for r in rows if r.get("ano") and r.get("mes")]
+        _pm_send(table, rows, reset=snapshot, final=idx == len(jobs) - 1)
+        counts[table] = len(rows)
+        log.info("pedido-magistral %s: %d linhas", table, len(rows))
+
+    state["last_run"] = today.strftime("%Y-%m-%d")
+    try: PM_STATE_FILE.write_text(json.dumps(state), "utf-8")
+    except Exception as e: log.error("pedido-magistral: falha ao gravar estado: %s", e)
+    return {"mode": "inicial (12 meses)" if first else "incremental", "since": since_s, "rows": counts}
+
+
 
 
 
@@ -1088,6 +1190,11 @@ def run_loop(stop_check=lambda: _STOP) -> None:
                 try: do_sync()
                 except Exception as e: log.error("sync erro: %s", e)
                 last_sync = time.time()
+            global _LAST_PM
+            if time.time() - _LAST_PM >= PM_INTERVAL:
+                _LAST_PM = time.time()
+                try: do_sync_pedido_magistral()
+                except Exception as e: log.error("pedido-magistral erro: %s", e)
             fails = 0
         except Exception as e:
             fails += 1

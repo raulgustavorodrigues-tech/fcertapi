@@ -15,15 +15,17 @@ Firebird (farmácia) --1x por dia--> Agente --> Hub (cópia dos dados) --> /api/
 
 ## Dados de cada tabela
 
-| Assunto | Tabela | O que vem |
-|---|---|---|
-| Produtos | FC03000 | código, descrição, unidade, situação, bloqueio, grupo (M/E/R/O), controle especial (SNGPC), preço de custo |
-| Estoque | FC03100 | filial, mínimo, máximo, atual |
-| Preço de compra | FC03160 | data e preço de cada reajuste (12 meses) |
-| Lotes | FC03140 | filial, lote, nota, entrada, validade, situação, quantidade (só lotes com saldo) |
-| Consumo | FC12110 | quantidade usada, **somada por produto e por mês** (12 meses) |
-| Notas de entrada | FC11100 | nota, fornecedor, data, quantidade, preço unitário (12 meses) |
-| Fornecedores | FC02000 | código, CNPJ, nome |
+
+| Assunto          | Tabela  | O que vem                                                                                                  |
+| ---------------- | ------- | ---------------------------------------------------------------------------------------------------------- |
+| Produtos         | FC03000 | código, descrição, unidade, situação, bloqueio, grupo (M/E/R/O), controle especial (SNGPC), preço de custo |
+| Estoque          | FC03100 | filial, mínimo, máximo, atual                                                                              |
+| Preço de compra  | FC03160 | data e preço de cada reajuste (12 meses)                                                                   |
+| Lotes            | FC03140 | filial, lote, nota, entrada, validade, situação, quantidade (só lotes com saldo)                           |
+| Consumo          | FC12110 | quantidade usada, **somada por produto e por mês** (12 meses)                                              |
+| Notas de entrada | FC11100 | nota, fornecedor, data, quantidade, preço unitário (12 meses)                                              |
+| Fornecedores     | FC02000 | código, CNPJ, nome                                                                                         |
+
 
 O consumo é somado por mês já no agente: assim o envio fica leve e a análise de sugestão continua possível (média mensal, sazonalidade).
 
@@ -68,4 +70,6 @@ Filtros aceitos: grupo, filial, situação, produto específico, só produtos ab
 - Agente: nova tarefa `sync_pedido_magistral` independente do loop de entregas, intervalo de 86400 s, envio em lotes de 5000 linhas por tabela com HMAC; carga completa substitui as tabelas de cadastro (produtos, estoque, lotes, fornecedores) e janela de 12 meses para as de histórico. Consumo: `SELECT CDPRIN, EXTRACT(YEAR/MONTH FROM DTENTR), SUM(QTREAL) ... GROUP BY`. Lotes: `WHERE ESTAT > 0`.
 - Recebimento: `src/routes/api/public/sync-pedido-magistral.ts` com validação Zod e registro em `sync_logs` (entra no contador "Syncs 24h").
 - Consumo: `src/routes/api/v1/pedido-magistral.ts` usando `authorizeApiRequest(admin, request, "pedido-magistral")`, escopo `pedido-magistral:read`, paginação `page`/`limit` (máx. 500 produtos), log em `api_access_log`.
-- Comando `force_sync_pedido_magistral` em `src/lib/commands.ts` e botão em `_app.bancos.tsx`.
+- Comando `force_sync_pedido_magistral` em `src/lib/commands.ts` e botão em `_app.bancos.tsx`.  
+  
+A API deverá realizar uma carga inicial para consultar as informações dos ultimos 12 meses, porém após isso era deve realizar apenas uma carga incremental dos novos dias para analisar o que foi inserido de informação, dessa forma a consulta ficará mais leve.

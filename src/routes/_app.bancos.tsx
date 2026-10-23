@@ -89,6 +89,7 @@ function BancosPage() {
     qc.invalidateQueries({ queryKey: ["dashboard"] });
   }
 
+
   async function syncEntregas(db: any) {
     toast.info(`Solicitando sync de Entregas (60 dias) em ${db.name}…`);
     try {
@@ -666,6 +667,17 @@ SYNC_TABLES=${db.sync_tables ?? "ALL"}`;
           </TooltipContent>
         </Tooltip>
 
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button size="sm" variant="outline" onClick={() => syncPedidoMagistral(db)}>
+              <RefreshCw className="h-3.5 w-3.5 mr-1 text-primary" /> Pedido Magistral agora
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-xs">
+            Envia agora os dados do <b>Pedido Magistral</b> (produtos, estoque, lotes, preços, consumo, notas e fornecedores). A 1ª vez traz 12 meses; depois só os dias novos.
+          </TooltipContent>
+        </Tooltip>
+
 
         <Tooltip>
           <TooltipTrigger asChild>
@@ -981,4 +993,17 @@ function DatabaseDialog({
       </DialogFooter>
     </DialogContent>
   );
+}
+
+async function syncPedidoMagistral(db: any) {
+  toast.info(`Solicitando envio do Pedido Magistral em ${db.name}…`);
+  try {
+    const { enqueueCommand, awaitCommandResult } = await import("@/lib/commands");
+    const { command_id } = await enqueueCommand(db.id, "force_sync_pedido_magistral", {});
+    const row = await awaitCommandResult(command_id, { timeoutMs: 170_000, intervalMs: 3_000 });
+    if (row.status === "success") toast.success(`${db.name}: Pedido Magistral enviado pelo agente`);
+    else toast.error(`${db.name}: ${row.error_message ?? "falha no envio do Pedido Magistral"}`);
+  } catch (e: any) {
+    toast.error(`${db.name}: ${e?.message ?? "agente não respondeu (versão 1.6.0 ou superior necessária)"}`);
+  }
 }
