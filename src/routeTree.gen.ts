@@ -35,7 +35,9 @@ import { Route as ApiPublicLogsRouteImport } from './routes/api/public/logs'
 import { Route as ApiPublicRegisterRouteImport } from './routes/api/public/register'
 import { Route as ApiPublicSyncRouteImport } from './routes/api/public/sync'
 import { Route as ApiPublicSyncEntregasRouteImport } from './routes/api/public/sync-entregas'
+import { Route as ApiPublicSyncPedidoMagistralRouteImport } from './routes/api/public/sync-pedido-magistral'
 import { Route as ApiV1EntregasRouteImport } from './routes/api/v1/entregas'
+import { Route as ApiV1PedidoMagistralRouteImport } from './routes/api/v1/pedido-magistral'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -167,9 +169,20 @@ const ApiPublicSyncEntregasRoute = ApiPublicSyncEntregasRouteImport.update({
   path: '/api/public/sync-entregas',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicSyncPedidoMagistralRoute =
+  ApiPublicSyncPedidoMagistralRouteImport.update({
+    id: '/api/public/sync-pedido-magistral',
+    path: '/api/public/sync-pedido-magistral',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiV1EntregasRoute = ApiV1EntregasRouteImport.update({
   id: '/api/v1/entregas',
   path: '/api/v1/entregas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1PedidoMagistralRoute = ApiV1PedidoMagistralRouteImport.update({
+  id: '/api/v1/pedido-magistral',
+  path: '/api/v1/pedido-magistral',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -199,7 +212,9 @@ export interface FileRoutesByFullPath {
   '/api/public/register': typeof ApiPublicRegisterRoute
   '/api/public/sync': typeof ApiPublicSyncRoute
   '/api/public/sync-entregas': typeof ApiPublicSyncEntregasRoute
+  '/api/public/sync-pedido-magistral': typeof ApiPublicSyncPedidoMagistralRoute
   '/api/v1/entregas': typeof ApiV1EntregasRoute
+  '/api/v1/pedido-magistral': typeof ApiV1PedidoMagistralRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -227,7 +242,9 @@ export interface FileRoutesByTo {
   '/api/public/register': typeof ApiPublicRegisterRoute
   '/api/public/sync': typeof ApiPublicSyncRoute
   '/api/public/sync-entregas': typeof ApiPublicSyncEntregasRoute
+  '/api/public/sync-pedido-magistral': typeof ApiPublicSyncPedidoMagistralRoute
   '/api/v1/entregas': typeof ApiV1EntregasRoute
+  '/api/v1/pedido-magistral': typeof ApiV1PedidoMagistralRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -257,7 +274,9 @@ export interface FileRoutesById {
   '/api/public/register': typeof ApiPublicRegisterRoute
   '/api/public/sync': typeof ApiPublicSyncRoute
   '/api/public/sync-entregas': typeof ApiPublicSyncEntregasRoute
+  '/api/public/sync-pedido-magistral': typeof ApiPublicSyncPedidoMagistralRoute
   '/api/v1/entregas': typeof ApiV1EntregasRoute
+  '/api/v1/pedido-magistral': typeof ApiV1PedidoMagistralRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -287,7 +306,9 @@ export interface FileRouteTypes {
     | '/api/public/register'
     | '/api/public/sync'
     | '/api/public/sync-entregas'
+    | '/api/public/sync-pedido-magistral'
     | '/api/v1/entregas'
+    | '/api/v1/pedido-magistral'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -315,7 +336,9 @@ export interface FileRouteTypes {
     | '/api/public/register'
     | '/api/public/sync'
     | '/api/public/sync-entregas'
+    | '/api/public/sync-pedido-magistral'
     | '/api/v1/entregas'
+    | '/api/v1/pedido-magistral'
   id:
     | '__root__'
     | '/_app'
@@ -344,7 +367,9 @@ export interface FileRouteTypes {
     | '/api/public/register'
     | '/api/public/sync'
     | '/api/public/sync-entregas'
+    | '/api/public/sync-pedido-magistral'
     | '/api/v1/entregas'
+    | '/api/v1/pedido-magistral'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -363,7 +388,9 @@ export interface RootRouteChildren {
   ApiPublicRegisterRoute: typeof ApiPublicRegisterRoute
   ApiPublicSyncRoute: typeof ApiPublicSyncRoute
   ApiPublicSyncEntregasRoute: typeof ApiPublicSyncEntregasRoute
+  ApiPublicSyncPedidoMagistralRoute: typeof ApiPublicSyncPedidoMagistralRoute
   ApiV1EntregasRoute: typeof ApiV1EntregasRoute
+  ApiV1PedidoMagistralRoute: typeof ApiV1PedidoMagistralRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -550,11 +577,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicSyncEntregasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/sync-pedido-magistral': {
+      id: '/api/public/sync-pedido-magistral'
+      path: '/api/public/sync-pedido-magistral'
+      fullPath: '/api/public/sync-pedido-magistral'
+      preLoaderRoute: typeof ApiPublicSyncPedidoMagistralRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v1/entregas': {
       id: '/api/v1/entregas'
       path: '/api/v1/entregas'
       fullPath: '/api/v1/entregas'
       preLoaderRoute: typeof ApiV1EntregasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/pedido-magistral': {
+      id: '/api/v1/pedido-magistral'
+      path: '/api/v1/pedido-magistral'
+      fullPath: '/api/v1/pedido-magistral'
+      preLoaderRoute: typeof ApiV1PedidoMagistralRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -606,7 +647,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicRegisterRoute: ApiPublicRegisterRoute,
   ApiPublicSyncRoute: ApiPublicSyncRoute,
   ApiPublicSyncEntregasRoute: ApiPublicSyncEntregasRoute,
+  ApiPublicSyncPedidoMagistralRoute: ApiPublicSyncPedidoMagistralRoute,
   ApiV1EntregasRoute: ApiV1EntregasRoute,
+  ApiV1PedidoMagistralRoute: ApiV1PedidoMagistralRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
