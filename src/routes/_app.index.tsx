@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { ONLINE_MS, OFFLINE_MS } from "@/lib/commands";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,8 +36,7 @@ export const Route = createFileRoute("/_app/")({
 
 /* --------------------------------- helpers -------------------------------- */
 
-const ONE_MIN = 60_000;
-const FIVE_MIN = 5 * ONE_MIN;
+
 
 function useNowTick(ms = 15_000) {
   const [, set] = useState(0);
@@ -82,7 +82,7 @@ function DashboardPage() {
       const [
         companies, databases, syncs24h, agentsOnline, lastSyncs, agents,
         syncs90d, syncs7h, allAgents, allDatabases, errors24h, syncs24hDetail,
-        entregasSyncs24h,
+        entregasSyncs24h, cmdFailures, eventFailures,
       ] = await Promise.all([
         supabase.from("companies").select("id", { count: "exact", head: true }),
         supabase.from("databases").select("id", { count: "exact", head: true }),
@@ -105,7 +105,32 @@ function DashboardPage() {
           .limit(50),
         supabase.from("sync_logs").select("started_at, status, records_count").gte("started_at", since24h),
         supabase.from("entregas_sync_status").select("database_id", { count: "exact", head: true }).gte("last_sync_at", since24h),
+        supabase.from("command_results")
+          .select("id, status, error_message, enqueued_at, database_id")
+          .in("status", ["error", "timeout"])
+          .gte("enqueued_at", since24h)
+          .limit(200),
+        supabase.from("agent_events")
+          .select("id, level, message, created_at, database_id")
+          .in("level", ["ERROR", "CRITICAL", "error"])
+          .gte("created_at", since24h)
+          .limit(200),
       ]);
+
+      const dbName = new Map<string, any>(
+        (allDatabases.data ?? []).map((d: any) => [d.id, { name: d.name, companies: d.companies }]),
+      );
+      const failures = [
+        ...(errors24h.data ?? []),
+        ...((cmdFailures.data ?? []) as any[]).map((c) => ({
+          id: c.id, status: c.status, error_message: c.error_message ?? `Comando ${c.status}`,
+          started_at: c.enqueued_at, databases: dbName.get(c.database_id) ?? null,
+        })),
+        ...((eventFailures.data ?? []) as any[]).map((e) => ({
+          id: e.id, status: "error", error_message: e.message,
+          started_at: e.created_at, databases: dbName.get(e.database_id) ?? null,
+        })),
+      ];
 
       const totalSyncs24h = (syncs24h.count ?? 0) + (entregasSyncs24h.count ?? 0);
 
@@ -120,7 +145,7 @@ function DashboardPage() {
         syncs7h: syncs7h.data ?? [],
         allAgents: allAgents.data ?? [],
         allDatabases: allDatabases.data ?? [],
-        errors24h: errors24h.data ?? [],
+        errors24h: failures,
         syncs24hDetail: syncs24hDetail.data ?? [],
       };
     },
@@ -148,7 +173,7 @@ function DashboardPage() {
         <KpiCard icon={<Building2 className="h-5 w-5" />} label="Empresas" value={data?.companies} loading={isLoading} accent="primary" hint="cadastradas no hub" />
         <KpiCard icon={<DatabaseIcon className="h-5 w-5" />} label="Bancos conectados" value={data?.databases} loading={isLoading} accent="info" hint="Firebird gerenciados" />
         <KpiCard icon={<RefreshCw className="h-5 w-5" />} label="Syncs 24h" value={data?.syncs24h} loading={isLoading} accent="success" hint="execuções gerais 24h" />
-        <KpiCard icon={<Activity className="h-5 w-5" />} label="Agentes online" value={data?.agentsOnline} loading={isLoading} accent="warning" hint="heartbeat < 60s" live />
+        <KpiCard icon={<Activity className="h-5 w-5" />} label="Agentes online" value={data?.agentsOnline} loading={isLoading} accent="warning" hint="heartbeat < 5 min" live />
       </div>
 
       {/* MAIN CHART ROW */}
@@ -503,11 +528,11 @@ function SyncsTimelineCard({ data, loading }: { data: any[]; loading: boolean })
 
 function AgentDonutCard({ agents, loading }: { agents: any[]; loading: boolean }) {
   const now = Date.now();
-  const online = agents.filter((a) => a.last_heartbeat_at && now - new Date(a.last_heartbeat_at).getTime() < ONE_MIN).length;
+  const online = agents.filter((a) => a.last_heartbeat_at && now - new Date(a.last_heartbeat_at).getTime() < ONLINE_MS).length;
   const stale = agents.filter((a) => {
     if (!a.last_heartbeat_at) return false;
     const age = now - new Date(a.last_heartbeat_at).getTime();
-    return age >= ONE_MIN && age <= FIVE_MIN;
+    return age >= ONLINE_MS && age <= OFFLINE_MS;
   }).length;
   const offline = agents.length - online - stale;
 
@@ -646,7 +671,7 @@ function AlertsPanel({
   const offlineAgents = agents.filter(
     (a) => a.status !== "online" ||
       !a.last_heartbeat_at ||
-      Date.now() - new Date(a.last_heartbeat_at).getTime() > FIVE_MIN
+      Date.now() - new Date(a.last_heartbeat_at).getTime() > OFFLINE_MS
   );
   const missingToken = databases.filter((d) => !d.agent_token);
   const totalAlerts = offlineAgents.length + errors.length + missingToken.length;
@@ -884,14 +909,14 @@ function SyncStatus({ status }: { status: string }) {
 
 function AgentHealthSection({ agents, loading }: { agents: any[]; loading: boolean }) {
   const now = Date.now();
-  const TWO_MIN = 2 * ONE_MIN;
+  const TWO_MIN = 2 * 60_000;
 
   const total = agents.length;
   const online = agents.filter(
-    (a) => a.last_heartbeat_at && now - new Date(a.last_heartbeat_at).getTime() < ONE_MIN
+    (a) => a.last_heartbeat_at && now - new Date(a.last_heartbeat_at).getTime() < ONLINE_MS
   ).length;
   const offline = agents.filter(
-    (a) => !a.last_heartbeat_at || now - new Date(a.last_heartbeat_at).getTime() > FIVE_MIN
+    (a) => !a.last_heartbeat_at || now - new Date(a.last_heartbeat_at).getTime() > OFFLINE_MS
   ).length;
   const stuck = agents.filter((a) => {
     const pending = Array.isArray(a.pending_commands) ? a.pending_commands : [];
@@ -912,7 +937,7 @@ function AgentHealthSection({ agents, loading }: { agents: any[]; loading: boole
 
   const alertAgents = agents.filter((a) => {
     const ageMs = a.last_heartbeat_at ? now - new Date(a.last_heartbeat_at).getTime() : Infinity;
-    if (ageMs > ONE_MIN) return true;
+    if (ageMs > ONLINE_MS) return true;
     const pending = Array.isArray(a.pending_commands) ? a.pending_commands : [];
     if (pending.length > 0) {
       const oldest = pending.reduce(
@@ -926,7 +951,7 @@ function AgentHealthSection({ agents, loading }: { agents: any[]; loading: boole
 
   function tone(a: any): { color: string; label: string } {
     const ageMs = a.last_heartbeat_at ? now - new Date(a.last_heartbeat_at).getTime() : Infinity;
-    if (ageMs > FIVE_MIN) return { color: "destructive", label: "Offline" };
+    if (ageMs > OFFLINE_MS) return { color: "destructive", label: "Offline" };
     const pending = Array.isArray(a.pending_commands) ? a.pending_commands : [];
     if (pending.length > 0) {
       const oldest = pending.reduce(
@@ -935,7 +960,7 @@ function AgentHealthSection({ agents, loading }: { agents: any[]; loading: boole
       );
       if (now - oldest > TWO_MIN) return { color: "warning", label: "Comandos travados" };
     }
-    if (ageMs > ONE_MIN) return { color: "warning", label: "Sem heartbeat recente" };
+    if (ageMs > ONLINE_MS) return { color: "warning", label: "Sem heartbeat recente" };
     return { color: "success", label: "OK" };
   }
 

@@ -1,4 +1,5 @@
 import { useMemo, useState, useRef } from "react";
+import { ONLINE_MS, OFFLINE_MS } from "@/lib/commands";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -40,8 +41,8 @@ function ufOf(a: Agent): string {
 function classify(a: Agent, now: number): "online" | "stale" | "offline" {
   if (!a.last_heartbeat_at) return "offline";
   const age = now - new Date(a.last_heartbeat_at).getTime();
-  if (age < 60_000) return "online";
-  if (age < 5 * 60_000) return "stale";
+  if (age < ONLINE_MS) return "online";
+  if (age < OFFLINE_MS) return "stale";
   return "offline";
 }
 

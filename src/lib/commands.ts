@@ -152,3 +152,14 @@ export function heartbeatTone(last: string | null | undefined): {
   if (ageSec < 600) return { color: "warning", ageSeconds: ageSec, label: `há ${Math.floor(ageSec / 60)}min` };
   return { color: "destructive", ageSeconds: ageSec, label: `há ${Math.floor(ageSec / 60)}min` };
 }
+
+/** Regra única de status: online < 5 min, instável 5–10 min, offline > 10 min. */
+export const ONLINE_MS = 5 * 60 * 1000;
+export const OFFLINE_MS = 10 * 60 * 1000;
+export function agentLiveness(last: string | null | undefined, now = Date.now()): "online" | "stale" | "offline" {
+  if (!last) return "offline";
+  const age = now - new Date(last).getTime();
+  if (age < ONLINE_MS) return "online";
+  if (age <= OFFLINE_MS) return "stale";
+  return "offline";
+}
