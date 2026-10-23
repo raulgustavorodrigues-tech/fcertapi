@@ -671,6 +671,304 @@ export type Database = {
           },
         ]
       }
+      pm_consumo_mensal: {
+        Row: {
+          cdpro: string
+          database_id: string
+          mes: string
+          qtreal: number | null
+          synced_at: string
+        }
+        Insert: {
+          cdpro: string
+          database_id: string
+          mes: string
+          qtreal?: number | null
+          synced_at?: string
+        }
+        Update: {
+          cdpro?: string
+          database_id?: string
+          mes?: string
+          qtreal?: number | null
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_consumo_mensal_database_id_fkey"
+            columns: ["database_id"]
+            isOneToOne: false
+            referencedRelation: "databases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_estoque: {
+        Row: {
+          cdfil: string
+          cdpro: string
+          database_id: string
+          estat: number | null
+          estma: number | null
+          estmi: number | null
+          synced_at: string
+        }
+        Insert: {
+          cdfil: string
+          cdpro: string
+          database_id: string
+          estat?: number | null
+          estma?: number | null
+          estmi?: number | null
+          synced_at?: string
+        }
+        Update: {
+          cdfil?: string
+          cdpro?: string
+          database_id?: string
+          estat?: number | null
+          estma?: number | null
+          estmi?: number | null
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_estoque_database_id_fkey"
+            columns: ["database_id"]
+            isOneToOne: false
+            referencedRelation: "databases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_fornecedores: {
+        Row: {
+          database_id: string
+          fanta: string | null
+          fornecid: string
+          nrcnpj: string | null
+          synced_at: string
+        }
+        Insert: {
+          database_id: string
+          fanta?: string | null
+          fornecid: string
+          nrcnpj?: string | null
+          synced_at?: string
+        }
+        Update: {
+          database_id?: string
+          fanta?: string | null
+          fornecid?: string
+          nrcnpj?: string | null
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_fornecedores_database_id_fkey"
+            columns: ["database_id"]
+            isOneToOne: false
+            referencedRelation: "databases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_lotes: {
+        Row: {
+          cdfil: string
+          cdpro: string
+          ctlot: string
+          database_id: string
+          dtent: string | null
+          dtval: string | null
+          estat: number | null
+          nrlot: string | null
+          nrnot: string | null
+          stlot: string | null
+          synced_at: string
+        }
+        Insert: {
+          cdfil: string
+          cdpro: string
+          ctlot: string
+          database_id: string
+          dtent?: string | null
+          dtval?: string | null
+          estat?: number | null
+          nrlot?: string | null
+          nrnot?: string | null
+          stlot?: string | null
+          synced_at?: string
+        }
+        Update: {
+          cdfil?: string
+          cdpro?: string
+          ctlot?: string
+          database_id?: string
+          dtent?: string | null
+          dtval?: string | null
+          estat?: number | null
+          nrlot?: string | null
+          nrnot?: string | null
+          stlot?: string | null
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_lotes_database_id_fkey"
+            columns: ["database_id"]
+            isOneToOne: false
+            referencedRelation: "databases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_notas: {
+        Row: {
+          cdpro: string
+          database_id: string
+          dtent: string
+          fornecid: string
+          nrnot: string
+          pruni: number | null
+          quant: number | null
+          synced_at: string
+        }
+        Insert: {
+          cdpro: string
+          database_id: string
+          dtent: string
+          fornecid: string
+          nrnot: string
+          pruni?: number | null
+          quant?: number | null
+          synced_at?: string
+        }
+        Update: {
+          cdpro?: string
+          database_id?: string
+          dtent?: string
+          fornecid?: string
+          nrnot?: string
+          pruni?: number | null
+          quant?: number | null
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_notas_database_id_fkey"
+            columns: ["database_id"]
+            isOneToOne: false
+            referencedRelation: "databases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_precos: {
+        Row: {
+          cdpro: string
+          database_id: string
+          dtreaj: string
+          prcom: number | null
+          synced_at: string
+        }
+        Insert: {
+          cdpro: string
+          database_id: string
+          dtreaj: string
+          prcom?: number | null
+          synced_at?: string
+        }
+        Update: {
+          cdpro?: string
+          database_id?: string
+          dtreaj?: string
+          prcom?: number | null
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_precos_database_id_fkey"
+            columns: ["database_id"]
+            isOneToOne: false
+            referencedRelation: "databases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_produtos: {
+        Row: {
+          cdpro: string
+          database_id: string
+          descr: string | null
+          grupo: string | null
+          indbloqueio: string | null
+          indsngpc: string | null
+          prcom: number | null
+          situa: string | null
+          synced_at: string
+          unida: string | null
+        }
+        Insert: {
+          cdpro: string
+          database_id: string
+          descr?: string | null
+          grupo?: string | null
+          indbloqueio?: string | null
+          indsngpc?: string | null
+          prcom?: number | null
+          situa?: string | null
+          synced_at?: string
+          unida?: string | null
+        }
+        Update: {
+          cdpro?: string
+          database_id?: string
+          descr?: string | null
+          grupo?: string | null
+          indbloqueio?: string | null
+          indsngpc?: string | null
+          prcom?: number | null
+          situa?: string | null
+          synced_at?: string
+          unida?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_produtos_database_id_fkey"
+            columns: ["database_id"]
+            isOneToOne: false
+            referencedRelation: "databases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_sync_status: {
+        Row: {
+          database_id: string
+          last_sync_at: string | null
+          rows_by_table: Json
+        }
+        Insert: {
+          database_id: string
+          last_sync_at?: string | null
+          rows_by_table?: Json
+        }
+        Update: {
+          database_id?: string
+          last_sync_at?: string | null
+          rows_by_table?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_sync_status_database_id_fkey"
+            columns: ["database_id"]
+            isOneToOne: true
+            referencedRelation: "databases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       saved_queries: {
         Row: {
           created_at: string
