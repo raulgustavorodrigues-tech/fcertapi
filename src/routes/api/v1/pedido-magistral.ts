@@ -45,9 +45,13 @@ export const Route = createFileRoute("/api/v1/pedido-magistral")({
         // Filtro "abaixo do mínimo" é resolvido pelo estoque.
         let restrict: string[] | null = null;
         if (abaixoMin) {
-          let eq = admin.from("pm_estoque").select("cdpro, estmi, estat").eq("database_id", dbId).gt("estmi", 0).limit(20000);
-          if (filial) eq = eq.eq("cdfil", filial);
-          const { data } = await eq;
+          const data = await fetchAll((from, to) => {
+            let eq = admin.from("pm_estoque").select("cdpro, estmi, estat, cdfil").eq("database_id", dbId).gt("estmi", 0)
+              .order("cdpro").order("cdfil").range(from, to);
+            if (filial) eq = eq.eq("cdfil", filial);
+            return eq as any;
+          });
+          if (data === null) return err(500, "DB_ERROR", "Falha ao consultar estoque");
           restrict = [...new Set((data ?? []).filter((e) => Number(e.estat ?? 0) < Number(e.estmi)).map((e) => e.cdpro))];
           if (!restrict.length) restrict = ["__none__"];
         }
@@ -64,18 +68,27 @@ export const Route = createFileRoute("/api/v1/pedido-magistral")({
 
         const sel = async (t: string, cols: string, order: string) => {
           if (!codes.length) return [] as any[];
-          let qq = (admin.from(t as any) as any).select(cols).eq("database_id", dbId).in("cdpro", codes).order(order).limit(50000);
-          if (filial && (t === "pm_estoque" || t === "pm_lotes")) qq = qq.eq("cdfil", filial);
-          const { data } = await qq;
-          return (data ?? []) as any[];
+          const data = await fetchAll((from, to) => {
+            let qq = (admin.from(t as any) as any).select(cols).eq("database_id", dbId).in("cdpro", codes)
+              .order("cdpro").order(order).range(from, to);
+            if (filial && (t === "pm_estoque" || t === "pm_lotes")) qq = qq.eq("cdfil", filial);
+            return qq;
+          });
+          if (data === null) throw new Error(`Falha ao consultar ${t}`);
+          return data;
         };
-        const [est, lotes, precos, cons, notas] = await Promise.all([
+        let est: any[], lotes: any[], precos: any[], cons: any[], notas: any[];
+        try {
+        [est, lotes, precos, cons, notas] = await Promise.all([
           sel("pm_estoque", "cdfil, cdpro, estmi, estma, estat", "cdfil"),
           sel("pm_lotes", "cdfil, cdpro, ctlot, nrlot, nrnot, stlot, dtent, dtval, estat", "dtval"),
           sel("pm_precos", "cdpro, dtreaj, prcom", "dtreaj"),
           sel("pm_consumo_mensal", "cdpro, mes, qtreal", "mes"),
           sel("pm_notas", "cdpro, nrnot, fornecid, dtent, quant, pruni", "dtent"),
         ]);
+        } catch (e) {
+          return err(500, "DB_ERROR", (e as Error).message);
+        }
         const fids = [...new Set(notas.map((n) => n.fornecid))];
         const { data: forns } = fids.length
           ? await admin.from("pm_fornecedores").select("fornecid, nrcnpj, fanta").eq("database_id", dbId).in("fornecid", fids)
@@ -135,3 +148,18 @@ export const Route = createFileRoute("/api/v1/pedido-magistral")({
     },
   },
 });
+
+/** Busca todas as linhas paginando de 1000 em 1000 (limite padrão da API). null = erro. */
+async function fetchAll(
+  build: (from: number, to: number) => PromiseLike<{ data: any[] | null; error: unknown }>,
+): Promise<any[] | null> {
+  const PAGE = 1000;
+  const out: any[] = [];
+  for (let from = 0; from < 500_000; from += PAGE) {
+    const { data, error } = await build(from, from + PAGE - 1);
+    if (error) return null;
+    out.push(...(data ?? []));
+    if (!data || data.length < PAGE) break;
+  }
+  return out;
+}
