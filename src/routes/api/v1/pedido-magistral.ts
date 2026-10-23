@@ -3,6 +3,7 @@
 // Retorna, por produto: cadastro, estoque por filial, lotes com saldo, histórico de preços,
 // consumo mensal (12 meses), entradas de notas com fornecedor.
 import { createFileRoute } from "@tanstack/react-router";
+import { restrictFilter } from "@/lib/restrict-filter";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
