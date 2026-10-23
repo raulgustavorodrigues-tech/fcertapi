@@ -29,22 +29,11 @@ export const Route = createFileRoute("/api/v1/entregas")({
       OPTIONS: async () => new Response(null, { status: 204, headers: CORS }),
       GET: async ({ request }) => {
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { authorizeApiRequest } = await import("@/lib/api-auth.server");
 
-        const apiKey = (request.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
-        if (!apiKey) return err(401, "MISSING_KEY", "Authorization Bearer ausente");
-
-        const keyHash = await sha256Hex(apiKey);
-        const { data: key } = await supabaseAdmin
-          .from("api_keys")
-          .select("id, company_id, database_id, scopes, revoked_at")
-          .eq("key_hash", keyHash)
-          .maybeSingle();
-
-        if (!key) return err(401, "INVALID_KEY", "Chave inválida");
-        if (key.revoked_at) return err(401, "REVOKED_KEY", "Chave revogada");
-        if (!key.scopes?.includes("entregas:read")) {
-          return err(403, "FORBIDDEN", "Chave sem permissão entregas:read");
-        }
+        const auth = await authorizeApiRequest(supabaseAdmin, request, "entregas");
+        if (!auth.ok) return err(auth.status, auth.code, auth.message);
+        const key = auth.key;
 
         const url = new URL(request.url);
         const dataInicio = url.searchParams.get("data_inicio");

@@ -8,12 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import { Copy, KeyRound, Plus, ShieldOff, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { formatDateTime } from "@/lib/format";
 import {
   listCompanyApiKeys, createCompanyApiKey, revokeCompanyApiKey,
+  listCompanyApis, setCompanyApi, getMyIsAdmin,
 } from "@/lib/api-keys.functions";
 
 function CopyRow({ label, value }: { label: string; value: string }) {
@@ -54,6 +57,23 @@ export function CompanyApiDialog({
 
   const [newName, setNewName] = useState("Logitech");
   const [plaintext, setPlaintext] = useState<string | null>(null);
+  const [selScopes, setSelScopes] = useState<string[] | null>(null);
+  const listApis = useServerFn(listCompanyApis);
+  const toggleApi = useServerFn(setCompanyApi);
+  const whoami = useServerFn(getMyIsAdmin);
+  const { data: me } = useQuery({ queryKey: ["me-admin"], queryFn: () => whoami(), enabled: open });
+  const { data: apis = [] } = useQuery({
+    queryKey: ["company-apis", companyId],
+    queryFn: () => listApis({ data: { companyId } }),
+    enabled: open,
+  });
+  const enabledApis = apis.filter((a: any) => a.enabled && a.status !== "disabled");
+  const scopes = selScopes ?? enabledApis.map((a: any) => a.scope);
+  const toggleMut = useMutation({
+    mutationFn: (v: { apiId: string; enabled: boolean }) => toggleApi({ data: { companyId, ...v } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["company-apis", companyId] }),
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao alterar"),
+  });
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const iso = (d: Date) => d.toISOString().slice(0, 10);
@@ -69,7 +89,7 @@ export function CompanyApiDialog({
   });
 
   const createMut = useMutation({
-    mutationFn: () => create({ data: { companyId, name: newName.trim() } }),
+    mutationFn: () => create({ data: { companyId, name: newName.trim(), scopes } }),
     onSuccess: (res: any) => {
       setPlaintext(res.plaintext);
       qc.invalidateQueries({ queryKey: ["company-api-keys", companyId] });
@@ -93,27 +113,58 @@ export function CompanyApiDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <KeyRound className="h-4 w-4 text-primary" />
-            Integração API — {companyName}
+            APIs — {companyName}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-5">
-          <CopyRow label="Endereço da API (somente o endereço)" value={apiUrlBase} />
-          <CopyRow label="Exemplo pronto com datas reais (últimos 30 dias)" value={apiUrl} />
-          <CopyRow label="Cabeçalho de autenticação" value="Authorization: Bearer SUA_CHAVE" />
-
-          <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-xs text-muted-foreground">
-            O erro <span className="font-mono">HTTP 422</span> acontece quando a data é enviada em
-            branco ou como texto de exemplo (AAAA-MM-DD). Envie sempre datas reais no formato
-            <span className="font-mono"> 2026-09-08</span>.
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">APIs disponíveis</Label>
+            {apis.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma API no catálogo.</p>}
+            {apis.map((a: any) => (
+              <div key={a.id} className="rounded-md border border-border p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium">{a.name}</div>
+                    {a.description && <div className="text-xs text-muted-foreground">{a.description}</div>}
+                  </div>
+                  {a.status !== "active" && (
+                    <Badge variant="muted">{a.status === "testing" ? "EM TESTE" : "DESATIVADA"}</Badge>
+                  )}
+                  <Switch
+                    checked={a.enabled}
+                    disabled={!me?.isAdmin || toggleMut.isPending}
+                    onCheckedChange={(v) => toggleMut.mutate({ apiId: a.id, enabled: v })}
+                  />
+                </div>
+                {a.enabled && (
+                  <>
+                    <CopyRow label="Endereço" value={`${origin}${a.path}`} />
+                    {a.slug === "entregas" && (
+                      <CopyRow label="Exemplo com datas reais (últimos 30 dias)" value={apiUrl} />
+                    )}
+                    {Array.isArray(a.params_doc) && a.params_doc.length > 0 && (
+                      <div className="text-xs text-muted-foreground space-y-0.5">
+                        {a.params_doc.map((p: any) => (
+                          <div key={p.name}><code className="font-mono">{p.name}</code> — {p.desc}</div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            ))}
+            {!me?.isAdmin && (
+              <p className="text-xs text-muted-foreground">Somente administradores podem habilitar APIs.</p>
+            )}
           </div>
 
-          <div className="rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">
-            <div className="font-medium text-foreground">Parâmetros aceitos</div>
-            <div><code className="font-mono">data_inicio</code> — obrigatório, AAAA-MM-DD</div>
-            <div><code className="font-mono">data_fim</code> — opcional, AAAA-MM-DD (padrão: data_inicio)</div>
-            <div><code className="font-mono">limit</code> — opcional, até 5000 (padrão 1000)</div>
-            <div><code className="font-mono">offset</code> — opcional, para paginação</div>
+          <CopyRow label="Cabeçalho de autenticação" value="Authorization: Bearer SUA_CHAVE" />
+
+          <div className="rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+            O erro <span className="font-mono">HTTP 422</span> acontece quando a data é enviada em
+            branco ou como texto de exemplo (AAAA-MM-DD). Envie sempre datas reais, ex.:
+            <span className="font-mono"> 2026-09-08</span>.
           </div>
 
           {plaintext && (
@@ -135,12 +186,31 @@ export function CompanyApiDialog({
               />
               <Button
                 onClick={() => createMut.mutate()}
-                disabled={createMut.isPending || newName.trim().length < 2}
+                disabled={createMut.isPending || newName.trim().length < 2 || scopes.length === 0}
               >
                 <Plus className="h-4 w-4 mr-1.5" />
                 {createMut.isPending ? "Gerando…" : "Gerar"}
               </Button>
             </div>
+            {enabledApis.length > 0 && (
+              <div className="flex flex-wrap gap-3 text-xs">
+                <span className="text-muted-foreground">A chave dá acesso a:</span>
+                {enabledApis.map((a: any) => (
+                  <label key={a.id} className="flex items-center gap-1.5">
+                    <Checkbox
+                      checked={scopes.includes(a.scope)}
+                      onCheckedChange={(v) =>
+                        setSelScopes(v ? [...scopes, a.scope] : scopes.filter((x: string) => x !== a.scope))
+                      }
+                    />
+                    {a.name}
+                  </label>
+                ))}
+              </div>
+            )}
+            {enabledApis.length === 0 && (
+              <p className="text-xs text-muted-foreground">Habilite ao menos uma API para gerar chaves.</p>
+            )}
           </div>
 
           <div className="space-y-2">

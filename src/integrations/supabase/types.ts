@@ -198,6 +198,42 @@ export type Database = {
           },
         ]
       }
+      api_catalog: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          params_doc: Json
+          path: string
+          scope: string
+          slug: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          params_doc?: Json
+          path: string
+          scope: string
+          slug: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          params_doc?: Json
+          path?: string
+          scope?: string
+          slug?: string
+          status?: string
+        }
+        Relationships: []
+      }
       api_keys: {
         Row: {
           company_id: string | null
@@ -347,6 +383,48 @@ export type Database = {
           state?: string | null
         }
         Relationships: []
+      }
+      company_apis: {
+        Row: {
+          api_id: string
+          company_id: string
+          enabled: boolean
+          enabled_at: string
+          enabled_by: string | null
+          id: string
+        }
+        Insert: {
+          api_id: string
+          company_id: string
+          enabled?: boolean
+          enabled_at?: string
+          enabled_by?: string | null
+          id?: string
+        }
+        Update: {
+          api_id?: string
+          company_id?: string
+          enabled?: boolean
+          enabled_at?: string
+          enabled_by?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_apis_api_id_fkey"
+            columns: ["api_id"]
+            isOneToOne: false
+            referencedRelation: "api_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_apis_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       databases: {
         Row: {

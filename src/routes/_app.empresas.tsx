@@ -193,7 +193,7 @@ function EmpresasPage() {
                     <Power className="h-3.5 w-3.5 mr-1" /> {c.active ? "Desativar" : "Ativar"}
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => setApiCompany({ id: c.id, name: c.name })}>
-                    <KeyRound className="h-3.5 w-3.5 mr-1" /> API / Logitech
+                    <KeyRound className="h-3.5 w-3.5 mr-1" /> APIs
                   </Button>
                 </div>
 
